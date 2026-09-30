@@ -1,0 +1,43 @@
+{
+	"required": true,
+	"package": "com.vulkairis.client.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"plugin": "com.vulkairis.client.mixin.VulkairisMixinPlugin",
+	"priority": 1100,
+	"client": [
+		"debug.LoadingOverlayDebugMixin",
+		"debug.MinecraftScreenDebugMixin",
+		"iris.DepthCopyStrategyMixin",
+		"iris.ExtendedShaderMixin",
+		"iris.GLDebugMixin",
+		"iris.GlResourceMixin",
+		"iris.GlShaderMixin",
+		"iris.IrisRenderSystemMixin",
+		"iris.PBRTextureManagerMixin",
+		"iris.PipelineManagerMixin",
+		"iris.ProgramCreatorMixin",
+		"iris.ProgramImagesBuilderMixin",
+		"iris.ProgramMixin",
+		"iris.ProgramUniformsBuilderMixin",
+		"iris.RenderBuffersMixin",
+		"iris.ShaderPackScreenMixin",
+		"iris.ShaderWorkaroundsMixin",
+		"iris.SmoothedFloatMixin",
+		"iris.SodiumProgramsMixin",
+		"iris.StandardMacrosMixin",
+		"render.GlStateManagerMixin",
+		"render.RenderTargetExtMixin",
+		"render.RendererMixin",
+		"render.VulkairisRenderSystemMixin",
+		"vulkan.AttributeAccessor",
+		"vulkan.GLSLParserMixin",
+		"vulkan.GlUtilMixin",
+		"vulkan.VkGlTextureMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}

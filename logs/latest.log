@@ -1,0 +1,7 @@
+[15:24:29] [main/INFO]: [Vulkairis/Analyzer] Shader 'valid_vert' passed dry-run analysis (SPIR-V: 1124 bytes)
+[15:24:29] [main/INFO]: [Vulkairis/Analyzer] Shader 'valid_frag' passed dry-run analysis (SPIR-V: 524 bytes)
+[15:24:29] [main/ERROR]: [Vulkairis] GLSL -> SPIR-V compilation failed for 'malformed_shader':
+malformed_shader:7: error: 'this' : Reserved word.
+
+[15:24:29] [main/WARN]: [Vulkairis/Analyzer] Dry-run compilation failed for 'malformed_shader': GLSL compilation failed for 'malformed_shader': malformed_shader:7: error: 'this' : Reserved word.
+

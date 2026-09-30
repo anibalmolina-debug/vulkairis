@@ -1,0 +1,1848 @@
+Compiled from "GLSLParser.java"
+public class net.vulkanmod.vulkan.shader.converter.GLSLParser {
+  private net.vulkanmod.vulkan.shader.converter.Lexer lexer;
+
+  private java.util.List<net.vulkanmod.vulkan.shader.converter.Token> tokens;
+
+  private int currentTokenIdx;
+
+  private net.vulkanmod.vulkan.shader.converter.Token currentToken;
+
+  private net.vulkanmod.vulkan.shader.converter.GLSLParser$Stage stage;
+
+  net.vulkanmod.vulkan.shader.converter.GLSLParser$PreprocessorState preprocessorState;
+
+  net.vulkanmod.vulkan.shader.converter.GLSLParser$State state;
+
+  java.util.LinkedList<net.vulkanmod.vulkan.shader.converter.GLSLParser$Node> vsStream;
+
+  java.util.LinkedList<net.vulkanmod.vulkan.shader.converter.GLSLParser$Node> fsStream;
+
+  java.util.Set<java.lang.String> defines;
+
+  int currentUniformLocation;
+
+  java.util.List<net.vulkanmod.vulkan.shader.converter.UniformBlock> uniformBlocks;
+
+  java.util.Map<java.lang.String, net.vulkanmod.vulkan.shader.converter.UniformBlock> uniformBlockMap;
+
+  java.util.List<net.vulkanmod.vulkan.shader.converter.Sampler> samplers;
+
+  java.util.Map<java.lang.String, net.vulkanmod.vulkan.shader.converter.Sampler> samplerMap;
+
+  java.util.Set<net.vulkanmod.vulkan.shader.converter.UniformBlock$Field> legacyUniforms;
+
+  net.minecraft.class_293 vertexFormat;
+
+  int currentInAtt;
+
+  int currentOutAtt;
+
+  java.util.ArrayList<net.vulkanmod.vulkan.shader.converter.Attribute> vertInAttributes;
+
+  java.util.ArrayList<net.vulkanmod.vulkan.shader.converter.Attribute> vertOutAttributes;
+
+  java.util.ArrayList<net.vulkanmod.vulkan.shader.converter.Attribute> fragInAttributes;
+
+  java.util.ArrayList<net.vulkanmod.vulkan.shader.converter.Attribute> fragOutAttributes;
+
+  public net.vulkanmod.vulkan.shader.converter.GLSLParser();
+    Code:
+       0: aload_0
+       1: invokespecial #95                 // Method java/lang/Object."<init>":()V
+       4: aload_0
+       5: getstatic     #98                 // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState.DEFAULT:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState;
+       8: putfield      #100                // Field preprocessorState:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState;
+      11: aload_0
+      12: getstatic     #102                // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$State.DEFAULT:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$State;
+      15: putfield      #104                // Field state:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$State;
+      18: aload_0
+      19: new           #106                // class java/util/LinkedList
+      22: dup
+      23: invokespecial #107                // Method java/util/LinkedList."<init>":()V
+      26: putfield      #109                // Field vsStream:Ljava/util/LinkedList;
+      29: aload_0
+      30: new           #106                // class java/util/LinkedList
+      33: dup
+      34: invokespecial #107                // Method java/util/LinkedList."<init>":()V
+      37: putfield      #111                // Field fsStream:Ljava/util/LinkedList;
+      40: aload_0
+      41: new           #113                // class java/util/HashSet
+      44: dup
+      45: invokespecial #114                // Method java/util/HashSet."<init>":()V
+      48: putfield      #116                // Field defines:Ljava/util/Set;
+      51: aload_0
+      52: iconst_0
+      53: putfield      #118                // Field currentUniformLocation:I
+      56: aload_0
+      57: new           #120                // class java/util/ArrayList
+      60: dup
+      61: invokespecial #121                // Method java/util/ArrayList."<init>":()V
+      64: putfield      #123                // Field uniformBlocks:Ljava/util/List;
+      67: aload_0
+      68: new           #125                // class java/util/HashMap
+      71: dup
+      72: invokespecial #126                // Method java/util/HashMap."<init>":()V
+      75: putfield      #128                // Field uniformBlockMap:Ljava/util/Map;
+      78: aload_0
+      79: new           #120                // class java/util/ArrayList
+      82: dup
+      83: invokespecial #121                // Method java/util/ArrayList."<init>":()V
+      86: putfield      #130                // Field samplers:Ljava/util/List;
+      89: aload_0
+      90: new           #125                // class java/util/HashMap
+      93: dup
+      94: invokespecial #126                // Method java/util/HashMap."<init>":()V
+      97: putfield      #132                // Field samplerMap:Ljava/util/Map;
+     100: aload_0
+     101: new           #134                // class it/unimi/dsi/fastutil/objects/ObjectOpenHashSet
+     104: dup
+     105: invokespecial #135                // Method it/unimi/dsi/fastutil/objects/ObjectOpenHashSet."<init>":()V
+     108: putfield      #137                // Field legacyUniforms:Ljava/util/Set;
+     111: aload_0
+     112: iconst_0
+     113: putfield      #139                // Field currentInAtt:I
+     116: aload_0
+     117: iconst_0
+     118: putfield      #141                // Field currentOutAtt:I
+     121: aload_0
+     122: new           #120                // class java/util/ArrayList
+     125: dup
+     126: invokespecial #121                // Method java/util/ArrayList."<init>":()V
+     129: putfield      #143                // Field vertInAttributes:Ljava/util/ArrayList;
+     132: aload_0
+     133: new           #120                // class java/util/ArrayList
+     136: dup
+     137: invokespecial #121                // Method java/util/ArrayList."<init>":()V
+     140: putfield      #145                // Field vertOutAttributes:Ljava/util/ArrayList;
+     143: aload_0
+     144: new           #120                // class java/util/ArrayList
+     147: dup
+     148: invokespecial #121                // Method java/util/ArrayList."<init>":()V
+     151: putfield      #147                // Field fragInAttributes:Ljava/util/ArrayList;
+     154: aload_0
+     155: new           #120                // class java/util/ArrayList
+     158: dup
+     159: invokespecial #121                // Method java/util/ArrayList."<init>":()V
+     162: putfield      #149                // Field fragOutAttributes:Ljava/util/ArrayList;
+     165: return
+
+  public void setVertexFormat(net.minecraft.class_293);
+    Code:
+       0: aload_0
+       1: aload_1
+       2: putfield      #155                // Field vertexFormat:Lnet/minecraft/class_293;
+       5: return
+
+  public void parse(net.vulkanmod.vulkan.shader.converter.Lexer, net.vulkanmod.vulkan.shader.converter.GLSLParser$Stage);
+    Code:
+       0: aload_0
+       1: aload_2
+       2: putfield      #159                // Field stage:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$Stage;
+       5: aload_0
+       6: aload_1
+       7: putfield      #161                // Field lexer:Lnet/vulkanmod/vulkan/shader/converter/Lexer;
+      10: aload_0
+      11: aload_0
+      12: getfield      #161                // Field lexer:Lnet/vulkanmod/vulkan/shader/converter/Lexer;
+      15: invokevirtual #167                // Method net/vulkanmod/vulkan/shader/converter/Lexer.tokenize:()Ljava/util/List;
+      18: putfield      #169                // Field tokens:Ljava/util/List;
+      21: aload_0
+      22: iconst_0
+      23: putfield      #171                // Field currentTokenIdx:I
+      26: aload_0
+      27: iconst_0
+      28: putfield      #139                // Field currentInAtt:I
+      31: aload_0
+      32: iconst_0
+      33: putfield      #141                // Field currentOutAtt:I
+      36: aload_0
+      37: invokevirtual #174                // Method advanceToken:()V
+      40: aload_0
+      41: invokevirtual #177                // Method parseVersion:()V
+      44: aload_0
+      45: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      48: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      51: getstatic     #186                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.EOF:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      54: if_acmpeq     393
+      57: getstatic     #190                // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$1.$SwitchMap$net$vulkanmod$vulkan$shader$converter$Token$TokenType:[I
+      60: aload_0
+      61: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      64: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      67: invokevirtual #194                // Method net/vulkanmod/vulkan/shader/converter/Token$TokenType.ordinal:()I
+      70: iaload
+      71: lookupswitch  { // 2
+                     1: 96
+                     2: 103
+               default: 118
+          }
+      96: aload_0
+      97: invokevirtual #197                // Method parsePreprocessor:()V
+     100: goto          118
+     103: aload_0
+     104: aload_0
+     105: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     108: invokevirtual #201                // Method appendToken:(Lnet/vulkanmod/vulkan/shader/converter/Token;)V
+     111: aload_0
+     112: invokevirtual #174                // Method advanceToken:()V
+     115: goto          44
+     118: aload_0
+     119: getfield      #100                // Field preprocessorState:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState;
+     122: getstatic     #204                // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState.IGNORE:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState;
+     125: if_acmpeq     378
+     128: getstatic     #190                // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$1.$SwitchMap$net$vulkanmod$vulkan$shader$converter$Token$TokenType:[I
+     131: aload_0
+     132: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     135: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     138: invokevirtual #194                // Method net/vulkanmod/vulkan/shader/converter/Token$TokenType.ordinal:()I
+     141: iaload
+     142: tableswitch   { // 1 to 4
+                     1: 172
+                     2: 367
+                     3: 179
+                     4: 356
+               default: 367
+          }
+     172: aload_0
+     173: invokevirtual #197                // Method parsePreprocessor:()V
+     176: goto          386
+     179: aload_0
+     180: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     183: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     186: astore_3
+     187: iconst_m1
+     188: istore        4
+     190: aload_3
+     191: invokevirtual #213                // Method java/lang/String.hashCode:()I
+     194: lookupswitch  { // 4
+           -1109722326: 236
+            -286926412: 251
+                  3365: 266
+                110414: 281
+               default: 293
+          }
+     236: aload_3
+     237: ldc           #215                // String layout
+     239: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     242: ifeq          293
+     245: iconst_0
+     246: istore        4
+     248: goto          293
+     251: aload_3
+     252: ldc           #221                // String uniform
+     254: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     257: ifeq          293
+     260: iconst_1
+     261: istore        4
+     263: goto          293
+     266: aload_3
+     267: ldc           #223                // String in
+     269: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     272: ifeq          293
+     275: iconst_2
+     276: istore        4
+     278: goto          293
+     281: aload_3
+     282: ldc           #225                // String out
+     284: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     287: ifeq          293
+     290: iconst_3
+     291: istore        4
+     293: iload         4
+     295: tableswitch   { // 0 to 3
+                     0: 324
+                     1: 331
+                     2: 338
+                     3: 338
+               default: 345
+          }
+     324: aload_0
+     325: invokevirtual #228                // Method parseUniformBlock:()V
+     328: goto          353
+     331: aload_0
+     332: invokevirtual #231                // Method parseUniform:()V
+     335: goto          353
+     338: aload_0
+     339: invokevirtual #234                // Method parseAttribute:()V
+     342: goto          353
+     345: aload_0
+     346: aload_0
+     347: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     350: invokevirtual #201                // Method appendToken:(Lnet/vulkanmod/vulkan/shader/converter/Token;)V
+     353: goto          386
+     356: aload_0
+     357: aload_0
+     358: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     361: invokevirtual #201                // Method appendToken:(Lnet/vulkanmod/vulkan/shader/converter/Token;)V
+     364: goto          386
+     367: aload_0
+     368: aload_0
+     369: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     372: invokevirtual #201                // Method appendToken:(Lnet/vulkanmod/vulkan/shader/converter/Token;)V
+     375: goto          386
+     378: aload_0
+     379: aload_0
+     380: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     383: invokevirtual #201                // Method appendToken:(Lnet/vulkanmod/vulkan/shader/converter/Token;)V
+     386: aload_0
+     387: invokevirtual #174                // Method advanceToken:()V
+     390: goto          44
+     393: aload_0
+     394: getfield      #159                // Field stage:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$Stage;
+     397: getstatic     #237                // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$Stage.VERTEX:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$Stage;
+     400: if_acmpne     596
+     403: aload_0
+     404: getfield      #143                // Field vertInAttributes:Ljava/util/ArrayList;
+     407: invokevirtual #241                // Method java/util/ArrayList.iterator:()Ljava/util/Iterator;
+     410: astore_3
+     411: aload_3
+     412: invokeinterface #247,  1          // InterfaceMethod java/util/Iterator.hasNext:()Z
+     417: ifeq          533
+     420: aload_3
+     421: invokeinterface #251,  1          // InterfaceMethod java/util/Iterator.next:()Ljava/lang/Object;
+     426: checkcast     #253                // class net/vulkanmod/vulkan/shader/converter/Attribute
+     429: astore        4
+     431: aload         4
+     433: getfield      #256                // Field net/vulkanmod/vulkan/shader/converter/Attribute.location:I
+     436: iconst_m1
+     437: if_icmpeq     443
+     440: goto          411
+     443: aload_0
+     444: getfield      #155                // Field vertexFormat:Lnet/minecraft/class_293;
+     447: ifnull        530
+     450: aload_0
+     451: getfield      #155                // Field vertexFormat:Lnet/minecraft/class_293;
+     454: invokevirtual #261                // Method net/minecraft/class_293.method_34445:()Ljava/util/List;
+     457: astore        6
+     459: aload         6
+     461: aload         4
+     463: getfield      #264                // Field net/vulkanmod/vulkan/shader/converter/Attribute.id:Ljava/lang/String;
+     466: invokeinterface #270,  2          // InterfaceMethod java/util/List.indexOf:(Ljava/lang/Object;)I
+     471: istore        5
+     473: iload         5
+     475: iconst_m1
+     476: if_icmpne     513
+     479: getstatic     #276                // Field net/vulkanmod/Initializer.LOGGER:Lorg/apache/logging/log4j/Logger;
+     482: ldc_w         #278                // String Element %s not found in elements %s
+     485: iconst_2
+     486: anewarray     #4                  // class java/lang/Object
+     489: dup
+     490: iconst_0
+     491: aload         4
+     493: getfield      #264                // Field net/vulkanmod/vulkan/shader/converter/Attribute.id:Ljava/lang/String;
+     496: aastore
+     497: dup
+     498: iconst_1
+     499: aload         6
+     501: aastore
+     502: invokevirtual #282                // Method java/lang/String.formatted:([Ljava/lang/Object;)Ljava/lang/String;
+     505: invokeinterface #288,  2          // InterfaceMethod org/apache/logging/log4j/Logger.error:(Ljava/lang/String;)V
+     510: goto          411
+     513: aload         4
+     515: iload         5
+     517: invokevirtual #292                // Method net/vulkanmod/vulkan/shader/converter/Attribute.setLocation:(I)V
+     520: aload_0
+     521: dup
+     522: getfield      #139                // Field currentInAtt:I
+     525: iconst_1
+     526: iadd
+     527: putfield      #139                // Field currentInAtt:I
+     530: goto          411
+     533: aload_0
+     534: getfield      #143                // Field vertInAttributes:Ljava/util/ArrayList;
+     537: invokevirtual #241                // Method java/util/ArrayList.iterator:()Ljava/util/Iterator;
+     540: astore_3
+     541: aload_3
+     542: invokeinterface #247,  1          // InterfaceMethod java/util/Iterator.hasNext:()Z
+     547: ifeq          596
+     550: aload_3
+     551: invokeinterface #251,  1          // InterfaceMethod java/util/Iterator.next:()Ljava/lang/Object;
+     556: checkcast     #253                // class net/vulkanmod/vulkan/shader/converter/Attribute
+     559: astore        4
+     561: aload         4
+     563: getfield      #256                // Field net/vulkanmod/vulkan/shader/converter/Attribute.location:I
+     566: iconst_m1
+     567: if_icmpeq     573
+     570: goto          541
+     573: aload_0
+     574: dup
+     575: getfield      #139                // Field currentInAtt:I
+     578: dup_x1
+     579: iconst_1
+     580: iadd
+     581: putfield      #139                // Field currentInAtt:I
+     584: istore        5
+     586: aload         4
+     588: iload         5
+     590: invokevirtual #292                // Method net/vulkanmod/vulkan/shader/converter/Attribute.setLocation:(I)V
+     593: goto          541
+     596: return
+
+  private void parseVersion();
+    Code:
+       0: aload_0
+       1: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+       4: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+       7: getstatic     #300                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.PREPROCESSOR:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      10: if_acmpeq     24
+      13: new           #302                // class java/lang/IllegalStateException
+      16: dup
+      17: ldc_w         #304                // String First glsl line must contain #version
+      20: invokespecial #306                // Method java/lang/IllegalStateException."<init>":(Ljava/lang/String;)V
+      23: athrow
+      24: aload_0
+      25: invokevirtual #174                // Method advanceToken:()V
+      28: aload_0
+      29: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      32: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+      35: ldc_w         #308                // String version
+      38: invokevirtual #312                // Method java/lang/String.startsWith:(Ljava/lang/String;)Z
+      41: ifne          55
+      44: new           #302                // class java/lang/IllegalStateException
+      47: dup
+      48: ldc_w         #304                // String First glsl line must contain #version
+      51: invokespecial #306                // Method java/lang/IllegalStateException."<init>":(Ljava/lang/String;)V
+      54: athrow
+      55: aload_0
+      56: invokevirtual #174                // Method advanceToken:()V
+      59: aload_0
+      60: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      63: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+      66: ldc_w         #314                // String \n
+      69: invokevirtual #318                // Method java/lang/String.contains:(Ljava/lang/CharSequence;)Z
+      72: ifne          82
+      75: aload_0
+      76: invokevirtual #174                // Method advanceToken:()V
+      79: goto          59
+      82: aload_0
+      83: invokevirtual #174                // Method advanceToken:()V
+      86: aload_0
+      87: new           #24                 // class net/vulkanmod/vulkan/shader/converter/Token
+      90: dup
+      91: getstatic     #300                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.PREPROCESSOR:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      94: ldc_w         #320                // String #version 450\n
+      97: invokespecial #323                // Method net/vulkanmod/vulkan/shader/converter/Token."<init>":(Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;Ljava/lang/String;)V
+     100: invokevirtual #201                // Method appendToken:(Lnet/vulkanmod/vulkan/shader/converter/Token;)V
+     103: return
+
+  private void parsePreprocessor();
+    Code:
+       0: aload_0
+       1: getfield      #171                // Field currentTokenIdx:I
+       4: iconst_1
+       5: isub
+       6: istore_1
+       7: iconst_1
+       8: istore_2
+       9: aload_0
+      10: iconst_1
+      11: invokevirtual #326                // Method advanceToken:(Z)V
+      14: aload_0
+      15: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      18: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+      21: astore_3
+      22: iconst_m1
+      23: istore        4
+      25: aload_3
+      26: invokevirtual #213                // Method java/lang/String.hashCode:()I
+      29: lookupswitch  { // 5
+           -1335633477: 80
+               3116345: 112
+               3321844: 144
+              96652088: 128
+             100107720: 96
+               default: 157
+          }
+      80: aload_3
+      81: ldc_w         #328                // String define
+      84: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+      87: ifeq          157
+      90: iconst_0
+      91: istore        4
+      93: goto          157
+      96: aload_3
+      97: ldc_w         #330                // String ifdef
+     100: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     103: ifeq          157
+     106: iconst_1
+     107: istore        4
+     109: goto          157
+     112: aload_3
+     113: ldc_w         #332                // String else
+     116: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     119: ifeq          157
+     122: iconst_2
+     123: istore        4
+     125: goto          157
+     128: aload_3
+     129: ldc_w         #334                // String endif
+     132: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     135: ifeq          157
+     138: iconst_3
+     139: istore        4
+     141: goto          157
+     144: aload_3
+     145: ldc_w         #336                // String line
+     148: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     151: ifeq          157
+     154: iconst_4
+     155: istore        4
+     157: iload         4
+     159: tableswitch   { // 0 to 4
+                     0: 192
+                     1: 217
+                     2: 251
+                     3: 281
+                     4: 291
+               default: 293
+          }
+     192: aload_0
+     193: iconst_1
+     194: invokevirtual #326                // Method advanceToken:(Z)V
+     197: aload_0
+     198: getfield      #116                // Field defines:Ljava/util/Set;
+     201: aload_0
+     202: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     205: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     208: invokeinterface #341,  2          // InterfaceMethod java/util/Set.add:(Ljava/lang/Object;)Z
+     213: pop
+     214: goto          293
+     217: aload_0
+     218: iconst_1
+     219: invokevirtual #326                // Method advanceToken:(Z)V
+     222: aload_0
+     223: getfield      #116                // Field defines:Ljava/util/Set;
+     226: aload_0
+     227: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     230: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     233: invokeinterface #343,  2          // InterfaceMethod java/util/Set.contains:(Ljava/lang/Object;)Z
+     238: ifne          293
+     241: aload_0
+     242: getstatic     #204                // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState.IGNORE:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState;
+     245: putfield      #100                // Field preprocessorState:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState;
+     248: goto          293
+     251: aload_0
+     252: getfield      #100                // Field preprocessorState:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState;
+     255: getstatic     #204                // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState.IGNORE:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState;
+     258: if_acmpeq     271
+     261: aload_0
+     262: getstatic     #204                // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState.IGNORE:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState;
+     265: putfield      #100                // Field preprocessorState:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState;
+     268: goto          293
+     271: aload_0
+     272: getstatic     #98                 // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState.DEFAULT:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState;
+     275: putfield      #100                // Field preprocessorState:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState;
+     278: goto          293
+     281: aload_0
+     282: getstatic     #98                 // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState.DEFAULT:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState;
+     285: putfield      #100                // Field preprocessorState:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$PreprocessorState;
+     288: goto          293
+     291: iconst_0
+     292: istore_2
+     293: aload_0
+     294: iload_1
+     295: putfield      #171                // Field currentTokenIdx:I
+     298: aload_0
+     299: dup
+     300: getfield      #171                // Field currentTokenIdx:I
+     303: iconst_1
+     304: iadd
+     305: putfield      #171                // Field currentTokenIdx:I
+     308: aload_0
+     309: aload_0
+     310: getfield      #169                // Field tokens:Ljava/util/List;
+     313: iload_1
+     314: invokeinterface #347,  2          // InterfaceMethod java/util/List.get:(I)Ljava/lang/Object;
+     319: checkcast     #24                 // class net/vulkanmod/vulkan/shader/converter/Token
+     322: putfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     325: iload_2
+     326: ifeq          350
+     329: aload_0
+     330: new           #24                 // class net/vulkanmod/vulkan/shader/converter/Token
+     333: dup
+     334: getstatic     #300                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.PREPROCESSOR:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     337: aload_0
+     338: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     341: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     344: invokespecial #323                // Method net/vulkanmod/vulkan/shader/converter/Token."<init>":(Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;Ljava/lang/String;)V
+     347: invokevirtual #201                // Method appendToken:(Lnet/vulkanmod/vulkan/shader/converter/Token;)V
+     350: aload_0
+     351: iconst_0
+     352: invokevirtual #326                // Method advanceToken:(Z)V
+     355: aload_0
+     356: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     359: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     362: ldc_w         #314                // String \n
+     365: invokevirtual #318                // Method java/lang/String.contains:(Ljava/lang/CharSequence;)Z
+     368: ifeq          325
+     371: return
+
+  private void parseUniform();
+    Code:
+       0: aload_0
+       1: iconst_1
+       2: invokevirtual #326                // Method advanceToken:(Z)V
+       5: aload_0
+       6: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+       9: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      12: getstatic     #353                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.IDENTIFIER:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      15: if_acmpeq     26
+      18: new           #302                // class java/lang/IllegalStateException
+      21: dup
+      22: invokespecial #354                // Method java/lang/IllegalStateException."<init>":()V
+      25: athrow
+      26: aload_0
+      27: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      30: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+      33: astore_1
+      34: iconst_m1
+      35: istore_2
+      36: aload_1
+      37: invokevirtual #213                // Method java/lang/String.hashCode:()I
+      40: lookupswitch  { // 3
+           -2027860833: 106
+             169358429: 91
+            1113023578: 76
+               default: 118
+          }
+      76: aload_1
+      77: ldc_w         #356                // String sampler2D
+      80: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+      83: ifeq          118
+      86: iconst_0
+      87: istore_2
+      88: goto          118
+      91: aload_1
+      92: ldc_w         #358                // String samplerCube
+      95: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+      98: ifeq          118
+     101: iconst_1
+     102: istore_2
+     103: goto          118
+     106: aload_1
+     107: ldc_w         #360                // String isamplerBuffer
+     110: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     113: ifeq          118
+     116: iconst_2
+     117: istore_2
+     118: iload_2
+     119: tableswitch   { // 0 to 2
+                     0: 144
+                     1: 154
+                     2: 164
+               default: 174
+          }
+     144: aload_0
+     145: getstatic     #364                // Field net/vulkanmod/vulkan/shader/converter/Sampler$Type.SAMPLER_2D:Lnet/vulkanmod/vulkan/shader/converter/Sampler$Type;
+     148: invokevirtual #368                // Method parseSampler:(Lnet/vulkanmod/vulkan/shader/converter/Sampler$Type;)V
+     151: goto          178
+     154: aload_0
+     155: getstatic     #371                // Field net/vulkanmod/vulkan/shader/converter/Sampler$Type.SAMPLER_CUBE:Lnet/vulkanmod/vulkan/shader/converter/Sampler$Type;
+     158: invokevirtual #368                // Method parseSampler:(Lnet/vulkanmod/vulkan/shader/converter/Sampler$Type;)V
+     161: goto          178
+     164: aload_0
+     165: getstatic     #374                // Field net/vulkanmod/vulkan/shader/converter/Sampler$Type.I_SAMPLER_BUFFER:Lnet/vulkanmod/vulkan/shader/converter/Sampler$Type;
+     168: invokevirtual #368                // Method parseSampler:(Lnet/vulkanmod/vulkan/shader/converter/Sampler$Type;)V
+     171: goto          178
+     174: aload_0
+     175: invokevirtual #377                // Method parseStorageUniform:()V
+     178: return
+
+  private void parseStorageUniform();
+    Code:
+       0: aload_0
+       1: invokevirtual #381                // Method parseUniformField:()Lnet/vulkanmod/vulkan/shader/converter/UniformBlock$Field;
+       4: astore_1
+       5: aload_0
+       6: getfield      #137                // Field legacyUniforms:Ljava/util/Set;
+       9: aload_1
+      10: invokeinterface #341,  2          // InterfaceMethod java/util/Set.add:(Ljava/lang/Object;)Z
+      15: pop
+      16: return
+
+  private void parseSampler(net.vulkanmod.vulkan.shader.converter.Sampler$Type);
+    Code:
+       0: aload_0
+       1: iconst_1
+       2: invokevirtual #326                // Method advanceToken:(Z)V
+       5: aload_0
+       6: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+       9: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      12: getstatic     #353                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.IDENTIFIER:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      15: if_acmpeq     26
+      18: new           #302                // class java/lang/IllegalStateException
+      21: dup
+      22: invokespecial #354                // Method java/lang/IllegalStateException."<init>":()V
+      25: athrow
+      26: aload_0
+      27: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      30: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+      33: astore_2
+      34: aload_0
+      35: iconst_1
+      36: invokevirtual #326                // Method advanceToken:(Z)V
+      39: aload_0
+      40: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      43: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      46: getstatic     #386                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.SEMICOLON:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      49: if_acmpeq     60
+      52: new           #302                // class java/lang/IllegalStateException
+      55: dup
+      56: invokespecial #354                // Method java/lang/IllegalStateException."<init>":()V
+      59: athrow
+      60: aload_0
+      61: getfield      #169                // Field tokens:Ljava/util/List;
+      64: aload_0
+      65: getfield      #171                // Field currentTokenIdx:I
+      68: invokeinterface #347,  2          // InterfaceMethod java/util/List.get:(I)Ljava/lang/Object;
+      73: checkcast     #24                 // class net/vulkanmod/vulkan/shader/converter/Token
+      76: astore_3
+      77: aload_3
+      78: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      81: getstatic     #389                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.SPACING:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      84: if_acmpne     145
+      87: aload_3
+      88: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+      91: ldc_w         #314                // String \n
+      94: invokestatic  #394                // Method java/util/Objects.equals:(Ljava/lang/Object;Ljava/lang/Object;)Z
+      97: ifeq          113
+     100: aload_0
+     101: dup
+     102: getfield      #171                // Field currentTokenIdx:I
+     105: iconst_1
+     106: iadd
+     107: putfield      #171                // Field currentTokenIdx:I
+     110: goto          145
+     113: aload_3
+     114: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     117: ldc_w         #314                // String \n
+     120: invokevirtual #397                // Method java/lang/String.indexOf:(Ljava/lang/String;)I
+     123: istore        4
+     125: iload         4
+     127: iflt          145
+     130: aload_3
+     131: aload_3
+     132: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     135: iload         4
+     137: iconst_1
+     138: iadd
+     139: invokevirtual #401                // Method java/lang/String.substring:(I)Ljava/lang/String;
+     142: putfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     145: new           #29                 // class net/vulkanmod/vulkan/shader/converter/Sampler
+     148: dup
+     149: aload_1
+     150: aload_2
+     151: invokespecial #404                // Method net/vulkanmod/vulkan/shader/converter/Sampler."<init>":(Lnet/vulkanmod/vulkan/shader/converter/Sampler$Type;Ljava/lang/String;)V
+     154: astore        4
+     156: aload_0
+     157: getfield      #132                // Field samplerMap:Ljava/util/Map;
+     160: aload_2
+     161: invokeinterface #409,  2          // InterfaceMethod java/util/Map.get:(Ljava/lang/Object;)Ljava/lang/Object;
+     166: ifnull        187
+     169: aload_0
+     170: getfield      #132                // Field samplerMap:Ljava/util/Map;
+     173: aload_2
+     174: invokeinterface #409,  2          // InterfaceMethod java/util/Map.get:(Ljava/lang/Object;)Ljava/lang/Object;
+     179: checkcast     #29                 // class net/vulkanmod/vulkan/shader/converter/Sampler
+     182: astore        4
+     184: goto          212
+     187: aload_0
+     188: getfield      #132                // Field samplerMap:Ljava/util/Map;
+     191: aload_2
+     192: aload         4
+     194: invokeinterface #413,  3          // InterfaceMethod java/util/Map.put:(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+     199: pop
+     200: aload_0
+     201: getfield      #130                // Field samplers:Ljava/util/List;
+     204: aload         4
+     206: invokeinterface #414,  2          // InterfaceMethod java/util/List.add:(Ljava/lang/Object;)Z
+     211: pop
+     212: aload_0
+     213: aload         4
+     215: invokevirtual #418                // Method appendNode:(Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$Node;)V
+     218: return
+
+  private void parseUniformBlock();
+    Code:
+       0: aload_0
+       1: getstatic     #425                // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$State.LAYOUT:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$State;
+       4: putfield      #104                // Field state:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$State;
+       7: aload_0
+       8: iconst_1
+       9: invokevirtual #326                // Method advanceToken:(Z)V
+      12: aload_0
+      13: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      16: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      19: getstatic     #428                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.LEFT_PARENTHESIS:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      22: if_acmpeq     33
+      25: new           #302                // class java/lang/IllegalStateException
+      28: dup
+      29: invokespecial #354                // Method java/lang/IllegalStateException."<init>":()V
+      32: athrow
+      33: aload_0
+      34: iconst_1
+      35: invokevirtual #326                // Method advanceToken:(Z)V
+      38: aload_0
+      39: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      42: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      45: getstatic     #431                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.RIGHT_PARENTHESIS:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      48: if_acmpne     33
+      51: aload_0
+      52: iconst_1
+      53: invokevirtual #326                // Method advanceToken:(Z)V
+      56: aload_0
+      57: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      60: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+      63: ldc           #221                // String uniform
+      65: invokestatic  #394                // Method java/util/Objects.equals:(Ljava/lang/Object;Ljava/lang/Object;)Z
+      68: ifne          79
+      71: new           #302                // class java/lang/IllegalStateException
+      74: dup
+      75: invokespecial #354                // Method java/lang/IllegalStateException."<init>":()V
+      78: athrow
+      79: aload_0
+      80: iconst_1
+      81: invokevirtual #326                // Method advanceToken:(Z)V
+      84: aload_0
+      85: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      88: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+      91: astore_1
+      92: new           #34                 // class net/vulkanmod/vulkan/shader/converter/UniformBlock
+      95: dup
+      96: aload_1
+      97: invokespecial #432                // Method net/vulkanmod/vulkan/shader/converter/UniformBlock."<init>":(Ljava/lang/String;)V
+     100: astore_2
+     101: aload_0
+     102: iconst_1
+     103: invokevirtual #326                // Method advanceToken:(Z)V
+     106: aload_0
+     107: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     110: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     113: getstatic     #435                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.LEFT_BRACE:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     116: if_acmpeq     127
+     119: new           #302                // class java/lang/IllegalStateException
+     122: dup
+     123: invokespecial #354                // Method java/lang/IllegalStateException."<init>":()V
+     126: athrow
+     127: aload_0
+     128: iconst_1
+     129: invokevirtual #326                // Method advanceToken:(Z)V
+     132: aload_0
+     133: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     136: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     139: getstatic     #438                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.RIGHT_BRACE:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     142: if_acmpeq     163
+     145: aload_0
+     146: invokevirtual #381                // Method parseUniformField:()Lnet/vulkanmod/vulkan/shader/converter/UniformBlock$Field;
+     149: astore_3
+     150: aload_2
+     151: aload_3
+     152: invokevirtual #442                // Method net/vulkanmod/vulkan/shader/converter/UniformBlock.addField:(Lnet/vulkanmod/vulkan/shader/converter/UniformBlock$Field;)V
+     155: aload_0
+     156: iconst_1
+     157: invokevirtual #326                // Method advanceToken:(Z)V
+     160: goto          132
+     163: aload_0
+     164: iconst_1
+     165: invokevirtual #326                // Method advanceToken:(Z)V
+     168: getstatic     #190                // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$1.$SwitchMap$net$vulkanmod$vulkan$shader$converter$Token$TokenType:[I
+     171: aload_0
+     172: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     175: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     178: invokevirtual #194                // Method net/vulkanmod/vulkan/shader/converter/Token$TokenType.ordinal:()I
+     181: iaload
+     182: lookupswitch  { // 2
+                     3: 211
+                     5: 208
+               default: 248
+          }
+     208: goto          256
+     211: aload_2
+     212: aload_0
+     213: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     216: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     219: invokevirtual #445                // Method net/vulkanmod/vulkan/shader/converter/UniformBlock.setAlias:(Ljava/lang/String;)V
+     222: aload_0
+     223: iconst_1
+     224: invokevirtual #326                // Method advanceToken:(Z)V
+     227: aload_0
+     228: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     231: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     234: getstatic     #386                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.SEMICOLON:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     237: if_acmpeq     256
+     240: new           #302                // class java/lang/IllegalStateException
+     243: dup
+     244: invokespecial #354                // Method java/lang/IllegalStateException."<init>":()V
+     247: athrow
+     248: new           #302                // class java/lang/IllegalStateException
+     251: dup
+     252: invokespecial #354                // Method java/lang/IllegalStateException."<init>":()V
+     255: athrow
+     256: aload_0
+     257: getfield      #169                // Field tokens:Ljava/util/List;
+     260: aload_0
+     261: getfield      #171                // Field currentTokenIdx:I
+     264: invokeinterface #347,  2          // InterfaceMethod java/util/List.get:(I)Ljava/lang/Object;
+     269: checkcast     #24                 // class net/vulkanmod/vulkan/shader/converter/Token
+     272: astore_3
+     273: aload_3
+     274: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     277: getstatic     #389                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.SPACING:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     280: if_acmpne     341
+     283: aload_3
+     284: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     287: ldc_w         #314                // String \n
+     290: invokestatic  #394                // Method java/util/Objects.equals:(Ljava/lang/Object;Ljava/lang/Object;)Z
+     293: ifeq          309
+     296: aload_0
+     297: dup
+     298: getfield      #171                // Field currentTokenIdx:I
+     301: iconst_1
+     302: iadd
+     303: putfield      #171                // Field currentTokenIdx:I
+     306: goto          341
+     309: aload_3
+     310: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     313: ldc_w         #314                // String \n
+     316: invokevirtual #397                // Method java/lang/String.indexOf:(Ljava/lang/String;)I
+     319: istore        4
+     321: iload         4
+     323: iflt          341
+     326: aload_3
+     327: aload_3
+     328: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     331: iload         4
+     333: iconst_1
+     334: iadd
+     335: invokevirtual #401                // Method java/lang/String.substring:(I)Ljava/lang/String;
+     338: putfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     341: aload_0
+     342: getfield      #128                // Field uniformBlockMap:Ljava/util/Map;
+     345: aload_2
+     346: getfield      #447                // Field net/vulkanmod/vulkan/shader/converter/UniformBlock.name:Ljava/lang/String;
+     349: invokeinterface #409,  2          // InterfaceMethod java/util/Map.get:(Ljava/lang/Object;)Ljava/lang/Object;
+     354: ifnull        377
+     357: aload_0
+     358: getfield      #128                // Field uniformBlockMap:Ljava/util/Map;
+     361: aload_2
+     362: getfield      #447                // Field net/vulkanmod/vulkan/shader/converter/UniformBlock.name:Ljava/lang/String;
+     365: invokeinterface #409,  2          // InterfaceMethod java/util/Map.get:(Ljava/lang/Object;)Ljava/lang/Object;
+     370: checkcast     #34                 // class net/vulkanmod/vulkan/shader/converter/UniformBlock
+     373: astore_2
+     374: goto          403
+     377: aload_0
+     378: getfield      #128                // Field uniformBlockMap:Ljava/util/Map;
+     381: aload_2
+     382: getfield      #447                // Field net/vulkanmod/vulkan/shader/converter/UniformBlock.name:Ljava/lang/String;
+     385: aload_2
+     386: invokeinterface #413,  3          // InterfaceMethod java/util/Map.put:(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+     391: pop
+     392: aload_0
+     393: getfield      #123                // Field uniformBlocks:Ljava/util/List;
+     396: aload_2
+     397: invokeinterface #414,  2          // InterfaceMethod java/util/List.add:(Ljava/lang/Object;)Z
+     402: pop
+     403: aload_0
+     404: aload_2
+     405: invokevirtual #418                // Method appendNode:(Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$Node;)V
+     408: return
+
+  private net.vulkanmod.vulkan.shader.converter.UniformBlock$Field parseUniformField();
+    Code:
+       0: aload_0
+       1: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+       4: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+       7: getstatic     #353                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.IDENTIFIER:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      10: if_acmpeq     21
+      13: new           #302                // class java/lang/IllegalStateException
+      16: dup
+      17: invokespecial #354                // Method java/lang/IllegalStateException."<init>":()V
+      20: athrow
+      21: aload_0
+      22: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      25: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+      28: astore_1
+      29: aload_0
+      30: iconst_1
+      31: invokevirtual #326                // Method advanceToken:(Z)V
+      34: aload_0
+      35: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      38: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      41: getstatic     #353                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.IDENTIFIER:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      44: if_acmpeq     55
+      47: new           #302                // class java/lang/IllegalStateException
+      50: dup
+      51: invokespecial #354                // Method java/lang/IllegalStateException."<init>":()V
+      54: athrow
+      55: aload_0
+      56: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      59: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+      62: astore_2
+      63: aload_0
+      64: iconst_1
+      65: invokevirtual #326                // Method advanceToken:(Z)V
+      68: aload_0
+      69: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      72: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      75: getstatic     #386                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.SEMICOLON:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      78: if_acmpeq     89
+      81: new           #302                // class java/lang/IllegalStateException
+      84: dup
+      85: invokespecial #354                // Method java/lang/IllegalStateException."<init>":()V
+      88: athrow
+      89: new           #32                 // class net/vulkanmod/vulkan/shader/converter/UniformBlock$Field
+      92: dup
+      93: aload_1
+      94: aload_2
+      95: invokespecial #452                // Method net/vulkanmod/vulkan/shader/converter/UniformBlock$Field."<init>":(Ljava/lang/String;Ljava/lang/String;)V
+      98: areturn
+
+  private void parseAttribute();
+    Code:
+       0: aload_0
+       1: getstatic     #457                // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$State.ATTRIBUTE:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$State;
+       4: putfield      #104                // Field state:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$State;
+       7: aload_0
+       8: iconst_1
+       9: invokevirtual #461                // Method prevNode:(Z)Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$TokenNode;
+      12: astore_1
+      13: aload_1
+      14: ifnull        50
+      17: aload_1
+      18: getfield      #463                // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$TokenNode.type:Ljava/lang/String;
+      21: getstatic     #428                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.LEFT_PARENTHESIS:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      24: invokevirtual #466                // Method net/vulkanmod/vulkan/shader/converter/Token$TokenType.name:()Ljava/lang/String;
+      27: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+      30: ifne          49
+      33: aload_1
+      34: getfield      #463                // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$TokenNode.type:Ljava/lang/String;
+      37: getstatic     #469                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.COMMA:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      40: invokevirtual #466                // Method net/vulkanmod/vulkan/shader/converter/Token$TokenType.name:()Ljava/lang/String;
+      43: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+      46: ifeq          50
+      49: return
+      50: aload_0
+      51: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      54: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+      57: astore_2
+      58: aload_0
+      59: iconst_1
+      60: invokevirtual #326                // Method advanceToken:(Z)V
+      63: aload_0
+      64: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      67: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      70: getstatic     #353                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.IDENTIFIER:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      73: if_acmpeq     84
+      76: new           #302                // class java/lang/IllegalStateException
+      79: dup
+      80: invokespecial #354                // Method java/lang/IllegalStateException."<init>":()V
+      83: athrow
+      84: aload_0
+      85: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      88: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+      91: astore_3
+      92: aload_0
+      93: iconst_1
+      94: invokevirtual #326                // Method advanceToken:(Z)V
+      97: aload_0
+      98: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     101: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     104: getstatic     #353                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.IDENTIFIER:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     107: if_acmpeq     118
+     110: new           #302                // class java/lang/IllegalStateException
+     113: dup
+     114: invokespecial #354                // Method java/lang/IllegalStateException."<init>":()V
+     117: athrow
+     118: aload_0
+     119: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     122: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     125: astore        4
+     127: aload_0
+     128: iconst_1
+     129: invokevirtual #326                // Method advanceToken:(Z)V
+     132: aload_0
+     133: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+     136: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     139: getstatic     #386                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.SEMICOLON:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     142: if_acmpeq     153
+     145: new           #302                // class java/lang/IllegalStateException
+     148: dup
+     149: invokespecial #354                // Method java/lang/IllegalStateException."<init>":()V
+     152: athrow
+     153: aload_0
+     154: getfield      #169                // Field tokens:Ljava/util/List;
+     157: aload_0
+     158: getfield      #171                // Field currentTokenIdx:I
+     161: invokeinterface #347,  2          // InterfaceMethod java/util/List.get:(I)Ljava/lang/Object;
+     166: checkcast     #24                 // class net/vulkanmod/vulkan/shader/converter/Token
+     169: astore        5
+     171: aload         5
+     173: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     176: getstatic     #389                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.SPACING:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     179: if_acmpne     244
+     182: aload         5
+     184: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     187: ldc_w         #314                // String \n
+     190: invokestatic  #394                // Method java/util/Objects.equals:(Ljava/lang/Object;Ljava/lang/Object;)Z
+     193: ifeq          209
+     196: aload_0
+     197: dup
+     198: getfield      #171                // Field currentTokenIdx:I
+     201: iconst_1
+     202: iadd
+     203: putfield      #171                // Field currentTokenIdx:I
+     206: goto          244
+     209: aload         5
+     211: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     214: ldc_w         #314                // String \n
+     217: invokevirtual #397                // Method java/lang/String.indexOf:(Ljava/lang/String;)I
+     220: istore        6
+     222: iload         6
+     224: iflt          244
+     227: aload         5
+     229: aload         5
+     231: getfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     234: iload         6
+     236: iconst_1
+     237: iadd
+     238: invokevirtual #401                // Method java/lang/String.substring:(I)Ljava/lang/String;
+     241: putfield      #208                // Field net/vulkanmod/vulkan/shader/converter/Token.value:Ljava/lang/String;
+     244: new           #253                // class net/vulkanmod/vulkan/shader/converter/Attribute
+     247: dup
+     248: aload_2
+     249: aload_3
+     250: aload         4
+     252: invokespecial #472                // Method net/vulkanmod/vulkan/shader/converter/Attribute."<init>":(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+     255: astore        6
+     257: aload_0
+     258: getfield      #159                // Field stage:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$Stage;
+     261: invokevirtual #473                // Method net/vulkanmod/vulkan/shader/converter/GLSLParser$Stage.ordinal:()I
+     264: lookupswitch  { // 2
+                     0: 292
+                     1: 447
+               default: 639
+          }
+     292: aload         6
+     294: getfield      #476                // Field net/vulkanmod/vulkan/shader/converter/Attribute.ioType:Ljava/lang/String;
+     297: astore        7
+     299: iconst_m1
+     300: istore        8
+     302: aload         7
+     304: invokevirtual #213                // Method java/lang/String.hashCode:()I
+     307: lookupswitch  { // 2
+                  3365: 332
+                110414: 348
+               default: 361
+          }
+     332: aload         7
+     334: ldc           #223                // String in
+     336: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     339: ifeq          361
+     342: iconst_0
+     343: istore        8
+     345: goto          361
+     348: aload         7
+     350: ldc           #225                // String out
+     352: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     355: ifeq          361
+     358: iconst_1
+     359: istore        8
+     361: iload         8
+     363: lookupswitch  { // 2
+                     0: 388
+                     1: 407
+               default: 436
+          }
+     388: aload         6
+     390: iconst_m1
+     391: invokevirtual #292                // Method net/vulkanmod/vulkan/shader/converter/Attribute.setLocation:(I)V
+     394: aload_0
+     395: getfield      #143                // Field vertInAttributes:Ljava/util/ArrayList;
+     398: aload         6
+     400: invokevirtual #477                // Method java/util/ArrayList.add:(Ljava/lang/Object;)Z
+     403: pop
+     404: goto          444
+     407: aload         6
+     409: aload_0
+     410: dup
+     411: getfield      #141                // Field currentOutAtt:I
+     414: dup_x1
+     415: iconst_1
+     416: iadd
+     417: putfield      #141                // Field currentOutAtt:I
+     420: invokevirtual #292                // Method net/vulkanmod/vulkan/shader/converter/Attribute.setLocation:(I)V
+     423: aload_0
+     424: getfield      #145                // Field vertOutAttributes:Ljava/util/ArrayList;
+     427: aload         6
+     429: invokevirtual #477                // Method java/util/ArrayList.add:(Ljava/lang/Object;)Z
+     432: pop
+     433: goto          444
+     436: new           #302                // class java/lang/IllegalStateException
+     439: dup
+     440: invokespecial #354                // Method java/lang/IllegalStateException."<init>":()V
+     443: athrow
+     444: goto          639
+     447: aload         6
+     449: getfield      #476                // Field net/vulkanmod/vulkan/shader/converter/Attribute.ioType:Ljava/lang/String;
+     452: astore        7
+     454: iconst_m1
+     455: istore        8
+     457: aload         7
+     459: invokevirtual #213                // Method java/lang/String.hashCode:()I
+     462: lookupswitch  { // 2
+                  3365: 488
+                110414: 504
+               default: 517
+          }
+     488: aload         7
+     490: ldc           #223                // String in
+     492: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     495: ifeq          517
+     498: iconst_0
+     499: istore        8
+     501: goto          517
+     504: aload         7
+     506: ldc           #225                // String out
+     508: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     511: ifeq          517
+     514: iconst_1
+     515: istore        8
+     517: iload         8
+     519: lookupswitch  { // 2
+                     0: 544
+                     1: 584
+               default: 631
+          }
+     544: aload_0
+     545: aload         6
+     547: invokevirtual #481                // Method getVertAttribute:(Lnet/vulkanmod/vulkan/shader/converter/Attribute;)Lnet/vulkanmod/vulkan/shader/converter/Attribute;
+     550: astore        9
+     552: aload         9
+     554: ifnull        580
+     557: aload         6
+     559: aload         9
+     561: getfield      #256                // Field net/vulkanmod/vulkan/shader/converter/Attribute.location:I
+     564: invokevirtual #292                // Method net/vulkanmod/vulkan/shader/converter/Attribute.setLocation:(I)V
+     567: aload_0
+     568: getfield      #147                // Field fragInAttributes:Ljava/util/ArrayList;
+     571: aload         6
+     573: invokevirtual #477                // Method java/util/ArrayList.add:(Ljava/lang/Object;)Z
+     576: pop
+     577: goto          581
+     580: return
+     581: goto          639
+     584: aload_0
+     585: getfield      #141                // Field currentOutAtt:I
+     588: ifle          602
+     591: new           #483                // class java/lang/UnsupportedOperationException
+     594: dup
+     595: ldc_w         #485                // String Multiple outputs not currently supported.
+     598: invokespecial #486                // Method java/lang/UnsupportedOperationException."<init>":(Ljava/lang/String;)V
+     601: athrow
+     602: aload         6
+     604: aload_0
+     605: dup
+     606: getfield      #141                // Field currentOutAtt:I
+     609: dup_x1
+     610: iconst_1
+     611: iadd
+     612: putfield      #141                // Field currentOutAtt:I
+     615: invokevirtual #292                // Method net/vulkanmod/vulkan/shader/converter/Attribute.setLocation:(I)V
+     618: aload_0
+     619: getfield      #149                // Field fragOutAttributes:Ljava/util/ArrayList;
+     622: aload         6
+     624: invokevirtual #477                // Method java/util/ArrayList.add:(Ljava/lang/Object;)Z
+     627: pop
+     628: goto          639
+     631: new           #302                // class java/lang/IllegalStateException
+     634: dup
+     635: invokespecial #354                // Method java/lang/IllegalStateException."<init>":()V
+     638: athrow
+     639: aload_0
+     640: aload         6
+     642: invokevirtual #418                // Method appendNode:(Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$Node;)V
+     645: return
+
+  private net.vulkanmod.vulkan.shader.converter.Attribute getVertAttribute(net.vulkanmod.vulkan.shader.converter.Attribute);
+    Code:
+       0: aconst_null
+       1: astore_2
+       2: aload_0
+       3: getfield      #145                // Field vertOutAttributes:Ljava/util/ArrayList;
+       6: invokevirtual #241                // Method java/util/ArrayList.iterator:()Ljava/util/Iterator;
+       9: astore_3
+      10: aload_3
+      11: invokeinterface #247,  1          // InterfaceMethod java/util/Iterator.hasNext:()Z
+      16: ifeq          51
+      19: aload_3
+      20: invokeinterface #251,  1          // InterfaceMethod java/util/Iterator.next:()Ljava/lang/Object;
+      25: checkcast     #253                // class net/vulkanmod/vulkan/shader/converter/Attribute
+      28: astore        4
+      30: aload         4
+      32: getfield      #264                // Field net/vulkanmod/vulkan/shader/converter/Attribute.id:Ljava/lang/String;
+      35: aload_1
+      36: getfield      #264                // Field net/vulkanmod/vulkan/shader/converter/Attribute.id:Ljava/lang/String;
+      39: invokestatic  #394                // Method java/util/Objects.equals:(Ljava/lang/Object;Ljava/lang/Object;)Z
+      42: ifeq          48
+      45: aload         4
+      47: astore_2
+      48: goto          10
+      51: aload_2
+      52: ifnonnull     55
+      55: aload_2
+      56: areturn
+
+  private void advanceToken();
+    Code:
+       0: aload_0
+       1: iconst_0
+       2: invokevirtual #326                // Method advanceToken:(Z)V
+       5: return
+
+  private void advanceToken(boolean);
+    Code:
+       0: aload_0
+       1: aload_0
+       2: getfield      #169                // Field tokens:Ljava/util/List;
+       5: aload_0
+       6: dup
+       7: getfield      #171                // Field currentTokenIdx:I
+      10: dup_x1
+      11: iconst_1
+      12: iadd
+      13: putfield      #171                // Field currentTokenIdx:I
+      16: invokeinterface #347,  2          // InterfaceMethod java/util/List.get:(I)Ljava/lang/Object;
+      21: checkcast     #24                 // class net/vulkanmod/vulkan/shader/converter/Token
+      24: putfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      27: iload_1
+      28: ifeq          74
+      31: aload_0
+      32: getfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      35: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      38: getstatic     #389                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.SPACING:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      41: if_acmpne     74
+      44: aload_0
+      45: aload_0
+      46: getfield      #169                // Field tokens:Ljava/util/List;
+      49: aload_0
+      50: dup
+      51: getfield      #171                // Field currentTokenIdx:I
+      54: dup_x1
+      55: iconst_1
+      56: iadd
+      57: putfield      #171                // Field currentTokenIdx:I
+      60: invokeinterface #347,  2          // InterfaceMethod java/util/List.get:(I)Ljava/lang/Object;
+      65: checkcast     #24                 // class net/vulkanmod/vulkan/shader/converter/Token
+      68: putfield      #179                // Field currentToken:Lnet/vulkanmod/vulkan/shader/converter/Token;
+      71: goto          27
+      74: return
+
+  private net.vulkanmod.vulkan.shader.converter.Token prevToken(boolean);
+    Code:
+       0: aload_0
+       1: getfield      #171                // Field currentTokenIdx:I
+       4: iconst_1
+       5: isub
+       6: istore_2
+       7: iload_2
+       8: ifne          13
+      11: aconst_null
+      12: areturn
+      13: iinc          2, -1
+      16: aload_0
+      17: getfield      #169                // Field tokens:Ljava/util/List;
+      20: iload_2
+      21: invokeinterface #347,  2          // InterfaceMethod java/util/List.get:(I)Ljava/lang/Object;
+      26: checkcast     #24                 // class net/vulkanmod/vulkan/shader/converter/Token
+      29: astore_3
+      30: iload_1
+      31: ifeq          88
+      34: iload_2
+      35: ifeq          88
+      38: aload_3
+      39: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      42: getstatic     #389                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.SPACING:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      45: if_acmpeq     68
+      48: aload_3
+      49: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      52: getstatic     #300                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.PREPROCESSOR:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      55: if_acmpeq     68
+      58: aload_3
+      59: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      62: getstatic     #495                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.COMMENT:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      65: if_acmpne     88
+      68: iinc          2, -1
+      71: aload_0
+      72: getfield      #169                // Field tokens:Ljava/util/List;
+      75: iload_2
+      76: invokeinterface #347,  2          // InterfaceMethod java/util/List.get:(I)Ljava/lang/Object;
+      81: checkcast     #24                 // class net/vulkanmod/vulkan/shader/converter/Token
+      84: astore_3
+      85: goto          30
+      88: iload_1
+      89: ifeq          124
+      92: aload_3
+      93: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      96: getstatic     #389                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.SPACING:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      99: if_acmpeq     122
+     102: aload_3
+     103: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     106: getstatic     #495                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.COMMENT:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     109: if_acmpeq     122
+     112: aload_3
+     113: getfield      #183                // Field net/vulkanmod/vulkan/shader/converter/Token.type:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     116: getstatic     #300                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.PREPROCESSOR:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     119: if_acmpne     124
+     122: aconst_null
+     123: areturn
+     124: aload_3
+     125: areturn
+
+  private net.vulkanmod.vulkan.shader.converter.GLSLParser$TokenNode prevNode(boolean);
+    Code:
+       0: aload_0
+       1: invokevirtual #501                // Method getNodeStream:()Ljava/util/LinkedList;
+       4: astore_2
+       5: aload_2
+       6: invokevirtual #504                // Method java/util/LinkedList.size:()I
+       9: iconst_1
+      10: isub
+      11: istore_3
+      12: iload_3
+      13: ifne          18
+      16: aconst_null
+      17: areturn
+      18: iinc          3, -1
+      21: aload_2
+      22: iload_3
+      23: invokevirtual #505                // Method java/util/LinkedList.get:(I)Ljava/lang/Object;
+      26: checkcast     #11                 // class net/vulkanmod/vulkan/shader/converter/GLSLParser$Node
+      29: astore        5
+      31: aload         5
+      33: instanceof    #9                  // class net/vulkanmod/vulkan/shader/converter/GLSLParser$TokenNode
+      36: ifne          41
+      39: aconst_null
+      40: areturn
+      41: aload         5
+      43: checkcast     #9                  // class net/vulkanmod/vulkan/shader/converter/GLSLParser$TokenNode
+      46: astore        6
+      48: aload         6
+      50: getfield      #463                // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$TokenNode.type:Ljava/lang/String;
+      53: astore        4
+      55: iload_1
+      56: ifeq          145
+      59: iload_3
+      60: ifeq          145
+      63: aload         4
+      65: getstatic     #389                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.SPACING:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      68: invokevirtual #466                // Method net/vulkanmod/vulkan/shader/converter/Token$TokenType.name:()Ljava/lang/String;
+      71: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+      74: ifne          105
+      77: aload         4
+      79: getstatic     #300                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.PREPROCESSOR:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      82: invokevirtual #466                // Method net/vulkanmod/vulkan/shader/converter/Token$TokenType.name:()Ljava/lang/String;
+      85: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+      88: ifne          105
+      91: aload         4
+      93: getstatic     #495                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.COMMENT:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+      96: invokevirtual #466                // Method net/vulkanmod/vulkan/shader/converter/Token$TokenType.name:()Ljava/lang/String;
+      99: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     102: ifeq          145
+     105: iinc          3, -1
+     108: aload_2
+     109: iload_3
+     110: invokevirtual #505                // Method java/util/LinkedList.get:(I)Ljava/lang/Object;
+     113: checkcast     #11                 // class net/vulkanmod/vulkan/shader/converter/GLSLParser$Node
+     116: astore        5
+     118: aload         5
+     120: instanceof    #9                  // class net/vulkanmod/vulkan/shader/converter/GLSLParser$TokenNode
+     123: ifne          128
+     126: aconst_null
+     127: areturn
+     128: aload         5
+     130: checkcast     #9                  // class net/vulkanmod/vulkan/shader/converter/GLSLParser$TokenNode
+     133: astore        6
+     135: aload         6
+     137: getfield      #463                // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$TokenNode.type:Ljava/lang/String;
+     140: astore        4
+     142: goto          55
+     145: iload_1
+     146: ifeq          193
+     149: aload         4
+     151: getstatic     #389                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.SPACING:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     154: invokevirtual #466                // Method net/vulkanmod/vulkan/shader/converter/Token$TokenType.name:()Ljava/lang/String;
+     157: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     160: ifne          191
+     163: aload         4
+     165: getstatic     #300                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.PREPROCESSOR:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     168: invokevirtual #466                // Method net/vulkanmod/vulkan/shader/converter/Token$TokenType.name:()Ljava/lang/String;
+     171: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     174: ifne          191
+     177: aload         4
+     179: getstatic     #495                // Field net/vulkanmod/vulkan/shader/converter/Token$TokenType.COMMENT:Lnet/vulkanmod/vulkan/shader/converter/Token$TokenType;
+     182: invokevirtual #466                // Method net/vulkanmod/vulkan/shader/converter/Token$TokenType.name:()Ljava/lang/String;
+     185: invokevirtual #219                // Method java/lang/String.equals:(Ljava/lang/Object;)Z
+     188: ifeq          193
+     191: aconst_null
+     192: areturn
+     193: aload         5
+     195: checkcast     #9                  // class net/vulkanmod/vulkan/shader/converter/GLSLParser$TokenNode
+     198: areturn
+
+  private void appendToken(net.vulkanmod.vulkan.shader.converter.Token);
+    Code:
+       0: aload_0
+       1: aload_1
+       2: invokestatic  #514                // Method net/vulkanmod/vulkan/shader/converter/GLSLParser$TokenNode.fromToken:(Lnet/vulkanmod/vulkan/shader/converter/Token;)Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$TokenNode;
+       5: invokevirtual #418                // Method appendNode:(Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$Node;)V
+       8: return
+
+  private void appendNode(net.vulkanmod.vulkan.shader.converter.GLSLParser$Node);
+    Code:
+       0: aload_0
+       1: invokevirtual #501                // Method getNodeStream:()Ljava/util/LinkedList;
+       4: aload_1
+       5: invokevirtual #515                // Method java/util/LinkedList.add:(Ljava/lang/Object;)Z
+       8: pop
+       9: return
+
+  private java.util.LinkedList<net.vulkanmod.vulkan.shader.converter.GLSLParser$Node> getNodeStream();
+    Code:
+       0: aload_0
+       1: getfield      #159                // Field stage:Lnet/vulkanmod/vulkan/shader/converter/GLSLParser$Stage;
+       4: invokevirtual #473                // Method net/vulkanmod/vulkan/shader/converter/GLSLParser$Stage.ordinal:()I
+       7: lookupswitch  { // 2
+                     0: 42
+                     1: 49
+               default: 32
+          }
+      32: new           #518                // class java/lang/MatchException
+      35: dup
+      36: aconst_null
+      37: aconst_null
+      38: invokespecial #521                // Method java/lang/MatchException."<init>":(Ljava/lang/String;Ljava/lang/Throwable;)V
+      41: athrow
+      42: aload_0
+      43: getfield      #109                // Field vsStream:Ljava/util/LinkedList;
+      46: goto          53
+      49: aload_0
+      50: getfield      #111                // Field fsStream:Ljava/util/LinkedList;
+      53: areturn
+
+  public java.lang.String getOutput(net.vulkanmod.vulkan.shader.converter.GLSLParser$Stage);
+    Code:
+       0: new           #525                // class java/lang/StringBuilder
+       3: dup
+       4: invokespecial #526                // Method java/lang/StringBuilder."<init>":()V
+       7: astore_2
+       8: aload_1
+       9: invokevirtual #473                // Method net/vulkanmod/vulkan/shader/converter/GLSLParser$Stage.ordinal:()I
+      12: lookupswitch  { // 2
+                     0: 50
+                     1: 57
+               default: 40
+          }
+      40: new           #518                // class java/lang/MatchException
+      43: dup
+      44: aconst_null
+      45: aconst_null
+      46: invokespecial #521                // Method java/lang/MatchException."<init>":(Ljava/lang/String;Ljava/lang/Throwable;)V
+      49: athrow
+      50: aload_0
+      51: getfield      #109                // Field vsStream:Ljava/util/LinkedList;
+      54: goto          61
+      57: aload_0
+      58: getfield      #111                // Field fsStream:Ljava/util/LinkedList;
+      61: astore_3
+      62: aload_3
+      63: invokevirtual #529                // Method java/util/LinkedList.getFirst:()Ljava/lang/Object;
+      66: checkcast     #11                 // class net/vulkanmod/vulkan/shader/converter/GLSLParser$Node
+      69: astore        4
+      71: aload_2
+      72: aload         4
+      74: invokeinterface #532,  1          // InterfaceMethod net/vulkanmod/vulkan/shader/converter/GLSLParser$Node.getStringValue:()Ljava/lang/String;
+      79: invokevirtual #536                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      82: pop
+      83: aload_2
+      84: ldc_w         #314                // String \n
+      87: invokevirtual #536                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+      90: pop
+      91: aload_1
+      92: invokevirtual #473                // Method net/vulkanmod/vulkan/shader/converter/GLSLParser$Stage.ordinal:()I
+      95: lookupswitch  { // 1
+                     0: 112
+               default: 120
+          }
+     112: aload_2
+     113: ldc_w         #538                // String #define gl_VertexID gl_VertexIndex\n\n
+     116: invokevirtual #536                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     119: pop
+     120: aload_2
+     121: ldc_w         #540                // String #define sampler sampler1\n
+     124: invokevirtual #536                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     127: pop
+     128: aload_2
+     129: ldc_w         #542                // String #define sample sample1\n\n
+     132: invokevirtual #536                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     135: pop
+     136: aload_0
+     137: getfield      #137                // Field legacyUniforms:Ljava/util/Set;
+     140: invokeinterface #545,  1          // InterfaceMethod java/util/Set.isEmpty:()Z
+     145: ifne          231
+     148: aload_2
+     149: ldc_w         #547                // String layout(binding = 0) uniform UBO {\n
+     152: invokevirtual #536                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     155: pop
+     156: aload_0
+     157: getfield      #137                // Field legacyUniforms:Ljava/util/Set;
+     160: invokeinterface #548,  1          // InterfaceMethod java/util/Set.iterator:()Ljava/util/Iterator;
+     165: astore        5
+     167: aload         5
+     169: invokeinterface #247,  1          // InterfaceMethod java/util/Iterator.hasNext:()Z
+     174: ifeq          223
+     177: aload         5
+     179: invokeinterface #251,  1          // InterfaceMethod java/util/Iterator.next:()Ljava/lang/Object;
+     184: checkcast     #32                 // class net/vulkanmod/vulkan/shader/converter/UniformBlock$Field
+     187: astore        6
+     189: aload_2
+     190: ldc_w         #550                // String \t%s %s;\n
+     193: iconst_2
+     194: anewarray     #4                  // class java/lang/Object
+     197: dup
+     198: iconst_0
+     199: aload         6
+     201: getfield      #551                // Field net/vulkanmod/vulkan/shader/converter/UniformBlock$Field.type:Ljava/lang/String;
+     204: aastore
+     205: dup
+     206: iconst_1
+     207: aload         6
+     209: getfield      #552                // Field net/vulkanmod/vulkan/shader/converter/UniformBlock$Field.name:Ljava/lang/String;
+     212: aastore
+     213: invokevirtual #282                // Method java/lang/String.formatted:([Ljava/lang/Object;)Ljava/lang/String;
+     216: invokevirtual #536                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     219: pop
+     220: goto          167
+     223: aload_2
+     224: ldc_w         #554                // String };\n\n
+     227: invokevirtual #536                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     230: pop
+     231: iconst_1
+     232: istore        5
+     234: iload         5
+     236: aload_3
+     237: invokevirtual #504                // Method java/util/LinkedList.size:()I
+     240: if_icmpge     272
+     243: aload_3
+     244: iload         5
+     246: invokevirtual #505                // Method java/util/LinkedList.get:(I)Ljava/lang/Object;
+     249: checkcast     #11                 // class net/vulkanmod/vulkan/shader/converter/GLSLParser$Node
+     252: astore        4
+     254: aload_2
+     255: aload         4
+     257: invokeinterface #532,  1          // InterfaceMethod net/vulkanmod/vulkan/shader/converter/GLSLParser$Node.getStringValue:()Ljava/lang/String;
+     262: invokevirtual #536                // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+     265: pop
+     266: iinc          5, 1
+     269: goto          234
+     272: aload_2
+     273: invokevirtual #557                // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+     276: areturn
+
+  public net.vulkanmod.vulkan.shader.descriptor.UBO[] createUBOs();
+    Code:
+       0: aload_0
+       1: getfield      #128                // Field uniformBlockMap:Ljava/util/Map;
+       4: invokeinterface #563,  1          // InterfaceMethod java/util/Map.size:()I
+       9: istore_1
+      10: iconst_0
+      11: istore_3
+      12: aload_0
+      13: getfield      #137                // Field legacyUniforms:Ljava/util/Set;
+      16: invokeinterface #545,  1          // InterfaceMethod java/util/Set.isEmpty:()Z
+      21: ifne          138
+      24: iinc          1, 1
+      27: iconst_1
+      28: istore_3
+      29: iload_1
+      30: anewarray     #565                // class net/vulkanmod/vulkan/shader/descriptor/UBO
+      33: astore_2
+      34: new           #39                 // class net/vulkanmod/vulkan/shader/layout/AlignedStruct$Builder
+      37: dup
+      38: invokespecial #566                // Method net/vulkanmod/vulkan/shader/layout/AlignedStruct$Builder."<init>":()V
+      41: astore        4
+      43: aload_0
+      44: getfield      #137                // Field legacyUniforms:Ljava/util/Set;
+      47: invokeinterface #548,  1          // InterfaceMethod java/util/Set.iterator:()Ljava/util/Iterator;
+      52: astore        5
+      54: aload         5
+      56: invokeinterface #247,  1          // InterfaceMethod java/util/Iterator.hasNext:()Z
+      61: ifeq          110
+      64: aload         5
+      66: invokeinterface #251,  1          // InterfaceMethod java/util/Iterator.next:()Ljava/lang/Object;
+      71: checkcast     #32                 // class net/vulkanmod/vulkan/shader/converter/UniformBlock$Field
+      74: astore        6
+      76: aload         6
+      78: getfield      #552                // Field net/vulkanmod/vulkan/shader/converter/UniformBlock$Field.name:Ljava/lang/String;
+      81: astore        7
+      83: aload         6
+      85: getfield      #551                // Field net/vulkanmod/vulkan/shader/converter/UniformBlock$Field.type:Ljava/lang/String;
+      88: astore        8
+      90: aload         8
+      92: aload         7
+      94: invokestatic  #572                // Method net/vulkanmod/vulkan/shader/layout/Uniform.createUniformInfo:(Ljava/lang/String;Ljava/lang/String;)Lnet/vulkanmod/vulkan/shader/layout/Uniform$Info;
+      97: astore        9
+      99: aload         4
+     101: aload         9
+     103: invokevirtual #576                // Method net/vulkanmod/vulkan/shader/layout/AlignedStruct$Builder.addUniform:(Lnet/vulkanmod/vulkan/shader/layout/Uniform$Info;)Lnet/vulkanmod/vulkan/shader/layout/AlignedStruct$Builder;
+     106: pop
+     107: goto          54
+     110: aload_2
+     111: iconst_0
+     112: aload         4
+     114: ldc_w         #578                // String UBO 0
+     117: iconst_0
+     118: ldc_w         #579                // int 2147483647
+     121: invokevirtual #583                // Method net/vulkanmod/vulkan/shader/layout/AlignedStruct$Builder.buildUBO:(Ljava/lang/String;II)Lnet/vulkanmod/vulkan/shader/descriptor/UBO;
+     124: aastore
+     125: aload_0
+     126: dup
+     127: getfield      #118                // Field currentUniformLocation:I
+     130: iconst_1
+     131: iadd
+     132: putfield      #118                // Field currentUniformLocation:I
+     135: goto          143
+     138: iload_1
+     139: anewarray     #565                // class net/vulkanmod/vulkan/shader/descriptor/UBO
+     142: astore_2
+     143: aload_0
+     144: getfield      #123                // Field uniformBlocks:Ljava/util/List;
+     147: invokeinterface #584,  1          // InterfaceMethod java/util/List.iterator:()Ljava/util/Iterator;
+     152: astore        4
+     154: aload         4
+     156: invokeinterface #247,  1          // InterfaceMethod java/util/Iterator.hasNext:()Z
+     161: ifeq          296
+     164: aload         4
+     166: invokeinterface #251,  1          // InterfaceMethod java/util/Iterator.next:()Ljava/lang/Object;
+     171: checkcast     #34                 // class net/vulkanmod/vulkan/shader/converter/UniformBlock
+     174: astore        5
+     176: new           #39                 // class net/vulkanmod/vulkan/shader/layout/AlignedStruct$Builder
+     179: dup
+     180: invokespecial #566                // Method net/vulkanmod/vulkan/shader/layout/AlignedStruct$Builder."<init>":()V
+     183: astore        6
+     185: aload         5
+     187: getfield      #587                // Field net/vulkanmod/vulkan/shader/converter/UniformBlock.fields:Ljava/util/List;
+     190: invokeinterface #584,  1          // InterfaceMethod java/util/List.iterator:()Ljava/util/Iterator;
+     195: astore        7
+     197: aload         7
+     199: invokeinterface #247,  1          // InterfaceMethod java/util/Iterator.hasNext:()Z
+     204: ifeq          253
+     207: aload         7
+     209: invokeinterface #251,  1          // InterfaceMethod java/util/Iterator.next:()Ljava/lang/Object;
+     214: checkcast     #32                 // class net/vulkanmod/vulkan/shader/converter/UniformBlock$Field
+     217: astore        8
+     219: aload         8
+     221: getfield      #552                // Field net/vulkanmod/vulkan/shader/converter/UniformBlock$Field.name:Ljava/lang/String;
+     224: astore        9
+     226: aload         8
+     228: getfield      #551                // Field net/vulkanmod/vulkan/shader/converter/UniformBlock$Field.type:Ljava/lang/String;
+     231: astore        10
+     233: aload         10
+     235: aload         9
+     237: invokestatic  #572                // Method net/vulkanmod/vulkan/shader/layout/Uniform.createUniformInfo:(Ljava/lang/String;Ljava/lang/String;)Lnet/vulkanmod/vulkan/shader/layout/Uniform$Info;
+     240: astore        11
+     242: aload         6
+     244: aload         11
+     246: invokevirtual #576                // Method net/vulkanmod/vulkan/shader/layout/AlignedStruct$Builder.addUniform:(Lnet/vulkanmod/vulkan/shader/layout/Uniform$Info;)Lnet/vulkanmod/vulkan/shader/layout/AlignedStruct$Builder;
+     249: pop
+     250: goto          197
+     253: aload         5
+     255: aload_0
+     256: dup
+     257: getfield      #118                // Field currentUniformLocation:I
+     260: dup_x1
+     261: iconst_1
+     262: iadd
+     263: putfield      #118                // Field currentUniformLocation:I
+     266: invokevirtual #590                // Method net/vulkanmod/vulkan/shader/converter/UniformBlock.setBinding:(I)V
+     269: aload_2
+     270: iload_3
+     271: aload         6
+     273: aload         5
+     275: getfield      #447                // Field net/vulkanmod/vulkan/shader/converter/UniformBlock.name:Ljava/lang/String;
+     278: aload         5
+     280: getfield      #593                // Field net/vulkanmod/vulkan/shader/converter/UniformBlock.binding:I
+     283: ldc_w         #579                // int 2147483647
+     286: invokevirtual #583                // Method net/vulkanmod/vulkan/shader/layout/AlignedStruct$Builder.buildUBO:(Ljava/lang/String;II)Lnet/vulkanmod/vulkan/shader/descriptor/UBO;
+     289: aastore
+     290: iinc          3, 1
+     293: goto          154
+     296: aload_2
+     297: areturn
+
+  public java.util.List<net.vulkanmod.vulkan.shader.descriptor.ImageDescriptor> getSamplerList();
+    Code:
+       0: new           #604                // class it/unimi/dsi/fastutil/objects/ObjectArrayList
+       3: dup
+       4: invokespecial #605                // Method it/unimi/dsi/fastutil/objects/ObjectArrayList."<init>":()V
+       7: astore_1
+       8: iconst_0
+       9: istore_2
+      10: aload_0
+      11: getfield      #130                // Field samplers:Ljava/util/List;
+      14: invokeinterface #584,  1          // InterfaceMethod java/util/List.iterator:()Ljava/util/Iterator;
+      19: astore_3
+      20: aload_3
+      21: invokeinterface #247,  1          // InterfaceMethod java/util/Iterator.hasNext:()Z
+      26: ifeq          149
+      29: aload_3
+      30: invokeinterface #251,  1          // InterfaceMethod java/util/Iterator.next:()Ljava/lang/Object;
+      35: checkcast     #29                 // class net/vulkanmod/vulkan/shader/converter/Sampler
+      38: astore        4
+      40: getstatic     #608                // Field net/vulkanmod/vulkan/shader/converter/GLSLParser$1.$SwitchMap$net$vulkanmod$vulkan$shader$converter$Sampler$Type:[I
+      43: aload         4
+      45: getfield      #610                // Field net/vulkanmod/vulkan/shader/converter/Sampler.type:Lnet/vulkanmod/vulkan/shader/converter/Sampler$Type;
+      48: invokevirtual #611                // Method net/vulkanmod/vulkan/shader/converter/Sampler$Type.ordinal:()I
+      51: iaload
+      52: tableswitch   { // 1 to 3
+                     1: 90
+                     2: 90
+                     3: 94
+               default: 80
+          }
+      80: new           #518                // class java/lang/MatchException
+      83: dup
+      84: aconst_null
+      85: aconst_null
+      86: invokespecial #521                // Method java/lang/MatchException."<init>":(Ljava/lang/String;Ljava/lang/Throwable;)V
+      89: athrow
+      90: iconst_1
+      91: goto          95
+      94: iconst_4
+      95: istore        5
+      97: aload         4
+      99: aload_0
+     100: dup
+     101: getfield      #118                // Field currentUniformLocation:I
+     104: dup_x1
+     105: iconst_1
+     106: iadd
+     107: putfield      #118                // Field currentUniformLocation:I
+     110: invokevirtual #612                // Method net/vulkanmod/vulkan/shader/converter/Sampler.setBinding:(I)V
+     113: aload_1
+     114: new           #614                // class net/vulkanmod/vulkan/shader/descriptor/ImageDescriptor
+     117: dup
+     118: aload         4
+     120: getfield      #615                // Field net/vulkanmod/vulkan/shader/converter/Sampler.binding:I
+     123: ldc_w         #356                // String sampler2D
+     126: aload         4
+     128: getfield      #616                // Field net/vulkanmod/vulkan/shader/converter/Sampler.id:Ljava/lang/String;
+     131: iload_2
+     132: iload         5
+     134: invokespecial #619                // Method net/vulkanmod/vulkan/shader/descriptor/ImageDescriptor."<init>":(ILjava/lang/String;Ljava/lang/String;II)V
+     137: invokeinterface #414,  2          // InterfaceMethod java/util/List.add:(Ljava/lang/Object;)Z
+     142: pop
+     143: iinc          2, 1
+     146: goto          20
+     149: aload_1
+     150: areturn
+}
