@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Vulkairis — Iris ↔ VulkanMod Bridge
 
 Vulkairis is a baseline prototype designed to bridge Iris Shaders and VulkanMod, allowing Iris's GLSL shaders to be compiled to SPIR-V and executed on VulkanMod's renderer.
@@ -52,3 +53,8 @@ Vulkairis is a baseline prototype designed to bridge Iris Shaders and VulkanMod,
      $$\begin{pmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0.5 & 0.5 \\ 0 & 0 & 0 & 1 \end{pmatrix}$$
 5. **Test Draw Call**:
    - `BridgeTestRenderer` issues a single test quad draw call inside VulkanMod's active frame render pass to verify end-to-end execution without Vulkan validation layer errors.
+=======
+# Vulkairis
+
+Vulkairis is a client-side bridge between Iris shader rendering and Vulkan-based rendering for Minecraft 1.21.1.
+>>>>>>> 35c6fbd1d492b8ea2a89673cf922f517c2010556
