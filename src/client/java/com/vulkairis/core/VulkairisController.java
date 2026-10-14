@@ -36,12 +36,22 @@ public class VulkairisController {
     private final AtomicLong createdPipelinesCount = new AtomicLong(0);
     /** Phase E: the most recent fully-attributed fallback engagement, or {@code null}. */
     private volatile FallbackRecord.Entry lastFallback = null;
+    /** Phase 1: production readiness state machine. */
+    private final PackReadinessStateMachine readinessStateMachine = new PackReadinessStateMachine();
 
     private VulkairisController() {
     }
 
     public static VulkairisController getInstance() {
         return INSTANCE;
+    }
+
+    public PackReadinessStateMachine getReadinessStateMachine() {
+        return readinessStateMachine;
+    }
+
+    public PackReadinessState getReadinessState() {
+        return readinessStateMachine.getState();
     }
 
     public synchronized void initialize() {

@@ -1144,6 +1144,30 @@ public class VulkairisTestRunner {
             failed++;
         }
 
+        // 51. Phase 1: production readiness state machine and truthful pass gating
+        try {
+            System.out.println("\n[51/51] Running ReadinessStateMachineTest...");
+            ReadinessStateMachineTest readinessTest = new ReadinessStateMachineTest();
+            readinessTest.setUp();
+            readinessTest.testInitialStateIsNoPack();
+            readinessTest.setUp();
+            readinessTest.testSequentialValidTransitions();
+            readinessTest.setUp();
+            readinessTest.testPromotionBlockedByClosedPassGates();
+            readinessTest.setUp();
+            readinessTest.testPromotionBlockedByUnbackedGpuResources();
+            readinessTest.setUp();
+            readinessTest.testExplicitFailureTransitionsToRejected();
+            readinessTest.setUp();
+            readinessTest.testResetReturnsToNoPack();
+            System.out.println(">>> PASS: ReadinessStateMachineTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: ReadinessStateMachineTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
         System.out.println("\n=================================================");
         System.out.println(String.format("   Test Suite Finished: %d Passed, %d Failed", passed, failed));
         System.out.println("=================================================");

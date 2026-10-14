@@ -3,6 +3,7 @@ package com.vulkairis.iris;
 import com.vulkairis.compatibility.AnalysisResult;
 import com.vulkairis.compatibility.ShaderAnalyzer;
 import com.vulkairis.core.BackendState;
+import com.vulkairis.core.PackReadinessState;
 import com.vulkairis.core.VulkairisController;
 import com.vulkairis.diagnostics.DiagnosticManager;
 import com.vulkairis.translation.IncludeResolver;
@@ -72,6 +73,8 @@ public class IrisBridge {
                 programCatalog = null;
                 com.vulkairis.rendering.exec.VulkairisFrameCoordinator.setActivePipeline(null);
                 VulkairisController.getInstance().setActiveShaderPackName(currentPackName);
+                VulkairisController.getInstance().getReadinessStateMachine().reset(
+                        SourceProvenance.currentGeneration(), "No active shader pack");
                 LOGGER.info("[Vulkairis/IrisBridge] No shader pack active (using internal/vanilla shaders)");
             }
         } catch (Throwable t) {
@@ -81,12 +84,22 @@ public class IrisBridge {
     }
 
     private static void evaluatePack(ShaderPack pack) {
+        long generation = SourceProvenance.currentGeneration();
+        String dimName = "default";
+        try {
+            dimName = Iris.getCurrentDimension() != null ? Iris.getCurrentDimension().toString() : "overworld";
+        } catch (Throwable ignored) {
+        }
+
         try {
             VulkairisController.getInstance().setState(BackendState.INITIALIZING);
             ProgramSet programSet = pack.getProgramSet(Iris.getCurrentDimension());
             if (programSet == null) {
                 LOGGER.warn("[Vulkairis/IrisBridge] Shader pack '{}' exposed no program set for dimension {}",
                         currentPackName, Iris.getCurrentDimension());
+                VulkairisController.getInstance().getReadinessStateMachine().transitionTo(
+                        PackReadinessState.REJECTED, null, generation, currentPackName, dimName,
+                        "all", false, "Exposed no program set for dimension");
                 return;
             }
 
@@ -100,6 +113,10 @@ public class IrisBridge {
                     "Discovered shader-pack programs",
                     discovered.size() + " program(s) across groups " + discovered.getPresentGroups());
 
+            VulkairisController.getInstance().getReadinessStateMachine().transitionTo(
+                    PackReadinessState.DISCOVERED, discovered, generation, currentPackName, dimName,
+                    "all", false, null);
+
             // Phase 12: capability gate before any partial rendering begins. Rejected packs
             // fall back with one actionable report; partial packs are noted and continue.
             com.vulkairis.compatibility.CapabilityGate.GateVerdict gate =
@@ -110,11 +127,18 @@ public class IrisBridge {
             }
             if (gate.verdict() == com.vulkairis.compatibility.CapabilityGate.PackVerdict.REJECT) {
                 String reason = String.join("; ", gate.notes());
+                VulkairisController.getInstance().getReadinessStateMachine().transitionTo(
+                        PackReadinessState.REJECTED, discovered, generation, currentPackName, dimName,
+                        "all", false, reason);
                 VulkairisController.getInstance().triggerFallback("Shader pack rejected", reason);
                 com.vulkairis.rendering.exec.VulkairisFrameCoordinator.setActivePipeline(null);
                 LOGGER.warn("[Vulkairis/IrisBridge] Pack '{}' rejected: {}", currentPackName, reason);
                 return;
             }
+
+            VulkairisController.getInstance().getReadinessStateMachine().transitionTo(
+                    PackReadinessState.TRANSLATING, discovered, generation, currentPackName, dimName,
+                    "all", false, null);
 
             prewarmTranslations(discovered);
 
@@ -131,19 +155,34 @@ public class IrisBridge {
                         + "execution path; it cannot produce a rendered image on its own.", currentPackName);
             }
 
+            VulkairisController.getInstance().getReadinessStateMachine().transitionTo(
+                    PackReadinessState.INTERFACE_VALIDATED, discovered, generation, currentPackName, dimName,
+                    "all", false, null);
+
             // Rebuild pack pipeline in frame coordinator
             try {
                 com.vulkairis.rendering.exec.VulkairisFrameCoordinator.rebuildPipeline(1920, 1080, 1024, null);
             } catch (Throwable ignored) {
             }
 
+            // Phase 1 Truthful Gate Check: attempting promotion to EXECUTION_READY enforces PassGates
+            // and GPU resource backing. If mandatory families are CLOSED/PARTIAL, state machine
+            // records DEGRADED and refuses promotion.
+            VulkairisController.getInstance().getReadinessStateMachine().transitionTo(
+                    PackReadinessState.EXECUTION_READY, discovered, generation, currentPackName, dimName,
+                    "all", false, null);
+
             // Discovery is not readiness. Pipelines, resources and pass contracts are required
             // before READY; the bridge is active but the shader pipeline is not proven yet.
             VulkairisController.getInstance().setState(BackendState.BRIDGE_ACTIVE);
             LOGGER.info("[Vulkairis/IrisBridge] Program discovery complete for '{}'; pipeline/resource "
-                    + "contracts are still required before READY.", currentPackName);
+                    + "contracts are still required before READY (ReadinessState: {}).",
+                    currentPackName, VulkairisController.getInstance().getReadinessState());
         } catch (Throwable t) {
             LOGGER.warn("[Vulkairis/IrisBridge] Pack validation notice: {}", t.getMessage());
+            VulkairisController.getInstance().getReadinessStateMachine().transitionTo(
+                    PackReadinessState.REJECTED, programCatalog, generation, currentPackName, dimName,
+                    "all", false, t.getMessage());
             VulkairisController.getInstance().triggerFallback("Shader pack discovery failed", t.getMessage());
         }
     }
