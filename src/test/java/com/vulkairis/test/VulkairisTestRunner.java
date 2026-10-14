@@ -1194,7 +1194,7 @@ public class VulkairisTestRunner {
 
         // 55. Phase 3: immutable pack execution plan from Iris
         try {
-            System.out.println("\n[55/55] Running ProgramExecutionPlanTest...");
+            System.out.println("\n[55/56] Running ProgramExecutionPlanTest...");
             ProgramExecutionPlanTest planTest = new ProgramExecutionPlanTest();
             planTest.testProgramVariantKeyComposition();
             planTest.testTargetSpecWindowScaleAndFixedResolution();
@@ -1207,6 +1207,32 @@ public class VulkairisTestRunner {
             passed++;
         } catch (Throwable t) {
             System.err.println(">>> FAIL: ProgramExecutionPlanTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        // 56. Phase 4: unified GLSL translation and compilation coordinator
+        try {
+            System.out.println("\n[56/56] Running UnifiedTranslationServiceTest...");
+            UnifiedTranslationServiceTest unifiedTest = new UnifiedTranslationServiceTest();
+            unifiedTest.setUp();
+            unifiedTest.testBufferRawSourceAndRetrieve();
+            unifiedTest.setUp();
+            unifiedTest.testTranslateProgramUnifiesStagesAndRecompiles();
+            unifiedTest.setUp();
+            unifiedTest.testTranslateProgramIdempotentCache();
+            unifiedTest.setUp();
+            unifiedTest.testTranslateProgramWithRegistryFallback();
+            unifiedTest.setUp();
+            unifiedTest.testTranslateProgramHandlesInvalidSource();
+            unifiedTest.setUp();
+            unifiedTest.testResetClearsBuffersAndOutcomes();
+            unifiedTest.setUp();
+            unifiedTest.testUnifiedProgramPassesLinkValidationAndDescriptorRebind();
+            System.out.println(">>> PASS: UnifiedTranslationServiceTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: UnifiedTranslationServiceTest: " + t.getMessage());
             t.printStackTrace();
             failed++;
         }

@@ -768,11 +768,13 @@ public class ShaderTranslator {
 
         Matcher layout = LAYOUT_QUALIFIER_PATTERN.matcher(source);
         while (layout.find()) {
-            if (!BINDING_QUALIFIER_PATTERN.matcher(layout.group(1)).find()) {
+            String name = descriptorNameAfter(source, layout.end());
+            if (name == null) {
                 continue;
             }
-            String name = descriptorNameAfter(source, layout.end());
-            if (name != null && seen.add(name)) {
+            boolean hasBinding = BINDING_QUALIFIER_PATTERN.matcher(layout.group(1)).find();
+            boolean isBlock = BLOCK_AFTER_LAYOUT_PATTERN.matcher(source.substring(layout.end())).lookingAt();
+            if ((hasBinding || isBlock) && seen.add(name)) {
                 byPosition.put(layout.start(), name);
             }
         }
@@ -971,10 +973,6 @@ public class ShaderTranslator {
         StringBuilder out = new StringBuilder(source.length());
         int last = 0;
         while (layout.find()) {
-            Matcher bindingMatcher = BINDING_QUALIFIER_PATTERN.matcher(layout.group(1));
-            if (!bindingMatcher.find()) {
-                continue;
-            }
             String name = descriptorNameAfter(source, layout.end());
             if (name == null) {
                 continue;
@@ -984,13 +982,20 @@ public class ShaderTranslator {
                 continue;
             }
 
-            // Rewrite only the binding token, using absolute offsets so the surrounding qualifier
-            // list (std140, set, spacing, ...) and the rest of the declaration stay untouched.
-            int bindingStart = layout.start(1) + bindingMatcher.start();
-            int bindingEnd = layout.start(1) + bindingMatcher.end();
-            out.append(source, last, bindingStart);
-            out.append("binding = ").append(dense);
-            last = bindingEnd;
+            Matcher bindingMatcher = BINDING_QUALIFIER_PATTERN.matcher(layout.group(1));
+            if (bindingMatcher.find()) {
+                // Rewrite only the binding token, using absolute offsets so the surrounding qualifier
+                // list (std140, set, spacing, ...) and the rest of the declaration stay untouched.
+                int bindingStart = layout.start(1) + bindingMatcher.start();
+                int bindingEnd = layout.start(1) + bindingMatcher.end();
+                out.append(source, last, bindingStart);
+                out.append("binding = ").append(dense);
+                last = bindingEnd;
+            } else {
+                out.append(source, last, layout.start(1));
+                out.append(rewriteBindingInLayout(layout.group(1), dense));
+                last = layout.end(1);
+            }
         }
         if (last == 0) {
             return source;

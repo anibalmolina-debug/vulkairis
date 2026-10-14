@@ -9,6 +9,7 @@ import com.vulkairis.iris.IrisBridge;
 import com.vulkairis.iris.SourceProvenance;
 import com.vulkairis.iris.SourceUnit;
 import com.vulkairis.translation.SpirvCompiler;
+import com.vulkairis.translation.UnifiedTranslationService;
 import com.vulkairis.translation.VulkanShaderRegistry;
 import net.irisshaders.iris.gl.GlResource;
 import net.irisshaders.iris.gl.shader.GlShader;
@@ -85,6 +86,7 @@ public abstract class GlShaderMixin extends GlResource {
             VulkairisController.getInstance().setLastCompileError(name + ": " + t.getMessage());
             virtualId = VulkanShaderRegistry.registerShader(name, stage, null, source);
         }
+        UnifiedTranslationService.bufferRawSource(virtualId, name, source, type != null ? type.name() : null);
         VulkairisController.getInstance().incrementShaderCount();
         return virtualId;
     }

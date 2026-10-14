@@ -5,6 +5,7 @@ import com.vulkairis.config.ConfigManager;
 import com.vulkairis.core.VulkairisController;
 import com.vulkairis.diagnostics.DiagnosticManager;
 import com.vulkairis.translation.GlObjectState;
+import com.vulkairis.translation.UnifiedTranslationService;
 import com.vulkairis.translation.VulkanProgramLinker;
 import com.vulkairis.translation.VulkanShaderRegistry;
 import com.vulkairis.translation.VulkairisProgram;
@@ -52,6 +53,7 @@ public class ProgramCreatorMixin {
             }
         }
         VULKAIRIS_LOGGER.info("[Vulkairis] Intercepted Iris program creation: '{}' with shaders {}", name, shaderIds);
+        UnifiedTranslationService.translateProgram(name, shaderIds);
         int progId = VulkanShaderRegistry.registerProgram(name, shaderIds);
 
         VulkairisProgram program = VulkanShaderRegistry.getProgram(progId);
