@@ -317,6 +317,27 @@ public final class ShaderPackProgramCatalog {
     }
 
     /**
+     * @return true if the catalog contains shadow passes
+     */
+    public boolean hasShadowPass() {
+        return hasGroup(ProgramGroup.Shadow) || hasGroup(ProgramGroup.ShadowComposite);
+    }
+
+    /**
+     * @param name program name to search for
+     * @return true if a program with this name was discovered
+     */
+    public boolean hasProgram(String name) {
+        if (name == null) return false;
+        for (ShaderPackProgram program : programs) {
+            if (program.name().equals(name)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Whether the pack ships a world/post-processing execution path at all. A catalog that only
      * contains shadow or setup programs cannot produce a final image.
      *

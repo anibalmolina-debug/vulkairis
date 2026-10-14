@@ -6,6 +6,7 @@ import com.vulkairis.core.BackendState;
 import com.vulkairis.core.PackReadinessState;
 import com.vulkairis.core.VulkairisController;
 import com.vulkairis.diagnostics.DiagnosticManager;
+import com.vulkairis.plan.ProgramExecutionPlan;
 import com.vulkairis.translation.IncludeResolver;
 import net.irisshaders.iris.Iris;
 import net.irisshaders.iris.shaderpack.ShaderPack;
@@ -23,6 +24,7 @@ public class IrisBridge {
 
     private static String currentPackName = "None";
     private static volatile ShaderPackProgramCatalog programCatalog = null;
+    private static volatile ProgramExecutionPlan currentExecutionPlan = null;
     /** Last dimension seen by the pipeline hooks; a change starts a new pipeline generation. */
     private static String lastDimension = null;
 
@@ -71,6 +73,7 @@ public class IrisBridge {
             } else {
                 currentPackName = "None (Internal)";
                 programCatalog = null;
+                currentExecutionPlan = null;
                 com.vulkairis.rendering.exec.VulkairisFrameCoordinator.setActivePipeline(null);
                 VulkairisController.getInstance().setActiveShaderPackName(currentPackName);
                 VulkairisController.getInstance().getReadinessStateMachine().reset(
@@ -159,9 +162,30 @@ public class IrisBridge {
                     PackReadinessState.INTERFACE_VALIDATED, discovered, generation, currentPackName, dimName,
                     "all", false, null);
 
-            // Rebuild pack pipeline in frame coordinator
+            // Phase 3: Build immutable execution plan using actual window dimensions and shadow settings
+            int width = 1920;
+            int height = 1080;
             try {
-                com.vulkairis.rendering.exec.VulkairisFrameCoordinator.rebuildPipeline(1920, 1080, 1024, null);
+                net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+                if (mc != null && mc.getWindow() != null) {
+                    int w = mc.getWindow().getWidth();
+                    int h = mc.getWindow().getHeight();
+                    if (w > 0 && h > 0) {
+                        width = w;
+                        height = h;
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+
+            int shadowResolution = 1024;
+            ProgramExecutionPlan plan = ProgramExecutionPlan.build(
+                    discovered, currentPackName, dimName, generation, width, height, shadowResolution, java.util.Map.of());
+            currentExecutionPlan = plan;
+
+            // Rebuild pack pipeline in frame coordinator using real dimensions
+            try {
+                com.vulkairis.rendering.exec.VulkairisFrameCoordinator.rebuildPipeline(width, height, shadowResolution, null);
             } catch (Throwable ignored) {
             }
 
@@ -241,6 +265,14 @@ public class IrisBridge {
 
     public static String getCurrentPackName() {
         return currentPackName;
+    }
+
+    public static ProgramExecutionPlan getExecutionPlan() {
+        return currentExecutionPlan;
+    }
+
+    public static void setExecutionPlanForTests(ProgramExecutionPlan plan) {
+        currentExecutionPlan = plan;
     }
 
     private record PackFilesSnapshot(ShaderPack pack, long generation, IncludeResolver.PackFiles files) {

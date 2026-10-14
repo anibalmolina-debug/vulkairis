@@ -1170,7 +1170,7 @@ public class VulkairisTestRunner {
 
         // 54. Phase 2: render lifecycle stage mapping, hook table, and ordering validator
         try {
-            System.out.println("\n[54/54] Running RenderLifecycleTest...");
+            System.out.println("\n[54/55] Running RenderLifecycleTest...");
             RenderLifecycleTest lifecycleTest = new RenderLifecycleTest();
             lifecycleTest.setUp();
             lifecycleTest.testStageOrderValuesAndIndices();
@@ -1188,6 +1188,25 @@ public class VulkairisTestRunner {
             passed++;
         } catch (Throwable t) {
             System.err.println(">>> FAIL: RenderLifecycleTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        // 55. Phase 3: immutable pack execution plan from Iris
+        try {
+            System.out.println("\n[55/55] Running ProgramExecutionPlanTest...");
+            ProgramExecutionPlanTest planTest = new ProgramExecutionPlanTest();
+            planTest.testProgramVariantKeyComposition();
+            planTest.testTargetSpecWindowScaleAndFixedResolution();
+            planTest.testBuildPlanWithFullCatalogAndOrdering();
+            planTest.testPerDimensionPlanSeparation();
+            planTest.testDisabledProgramOptionExcludesFromPasses();
+            planTest.testFallbackAppliedResolution();
+            planTest.testResizePreservesPlanStructure();
+            System.out.println(">>> PASS: ProgramExecutionPlanTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: ProgramExecutionPlanTest: " + t.getMessage());
             t.printStackTrace();
             failed++;
         }
