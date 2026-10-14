@@ -36,7 +36,7 @@ public class ShaderAnalyzer {
         String preprocessed;
         try {
             boolean isVertex = (stage == 35633);
-            preprocessed = ShaderTranslator.preprocessGlsl(glslSource, isVertex);
+            preprocessed = ShaderTranslator.preprocessGlsl(glslSource, isVertex, shaderName);
         } catch (Exception e) {
             return AnalysisResult.error(shaderName, "GLSL Preprocessing failed", e.getMessage());
         }

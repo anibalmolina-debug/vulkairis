@@ -982,7 +982,7 @@ public class VulkairisTestRunner {
 
         // 47. Phase A: Iris-pack #include resolver (absolute/relative/case/miss/cycle/escape)
         try {
-            System.out.println("\n[47/47] Running IncludeResolverTest...");
+            System.out.println("\n[47/54] Running IncludeResolverTest...");
             IncludeResolverTest includeTest = new IncludeResolverTest();
             includeTest.testAbsoluteIncludeResolvesUnderShadersRoot();
             includeTest.testRelativeIncludeResolvesNextToIncluder();
@@ -1011,7 +1011,7 @@ public class VulkairisTestRunner {
 
         // 48. Phase B: legacy-GLSL mappings + program-together translation goldens.
         try {
-            System.out.println("\n[48/48] Running LegacyGlslTest + ProgramTranslatorTest...");
+            System.out.println("\n[48/54] Running LegacyGlslTest + ProgramTranslatorTest...");
             LegacyGlslTest legacyGlslTest = new LegacyGlslTest();
             legacyGlslTest.testTexture2DFamilyMapsToCoreCallees();
             legacyGlslTest.testShadowLookupsAreWrappedNotRenamed();
@@ -1052,10 +1052,10 @@ public class VulkairisTestRunner {
             failed++;
         }
 
-        // 48. Phase F: GUI close-out (toggle contract, scan states, rescan, mods refusal,
+        // 49. Phase F: GUI close-out (toggle contract, scan states, rescan, mods refusal,
         // sanitize/bounds/export, Advanced gates, ModMenu + Compatibility wiring)
         try {
-            System.out.println("\n[48/48] Running PhaseFGuiCloseoutTest...");
+            System.out.println("\n[49/54] Running PhaseFGuiCloseoutTest...");
             PhaseFGuiCloseoutTest phaseFTest = new PhaseFGuiCloseoutTest();
             phaseFTest.testToggleColorAndLabelChangeTogether();
             phaseFTest.testEveryToggleRowHasTooltipAndRoundTrips();
@@ -1075,10 +1075,10 @@ public class VulkairisTestRunner {
             failed++;
         }
 
-        // 49. Phase C: compile-path hardening (bounded stack/slots, oversized rejection,
+        // 50. Phase C: compile-path hardening (bounded stack/slots, oversized rejection,
         // versioned module cache + disk persistence, warmup-before-draw, stage rejection)
         try {
-            System.out.println("\n[49/49] Running CompileHardeningTest...");
+            System.out.println("\n[50/54] Running CompileHardeningTest...");
             CompileHardeningTest hardeningTest = new CompileHardeningTest();
             hardeningTest.testOversizedSourceRejectedWithReason();
             hardeningTest.testConcurrentCompilesStayCapped();
@@ -1098,9 +1098,9 @@ public class VulkairisTestRunner {
             failed++;
         }
 
-        // 49. Phase E: chain-plan replay, substitute-final labeling, fallback honesty
+        // 51. Phase E: chain-plan replay, substitute-final labeling, fallback honesty
         try {
-            System.out.println("\n[49/49] Running PhaseEChainFallbackTest...");
+            System.out.println("\n[51/54] Running PhaseEChainFallbackTest...");
             PhaseEChainFallbackTest phaseETest = new PhaseEChainFallbackTest();
             phaseETest.testPlanReplayDeterministic();
             phaseETest.testSubstituteFinalLabeling();
@@ -1113,10 +1113,10 @@ public class VulkairisTestRunner {
             failed++;
         }
 
-        // 50. Phase D: Sodium/VulkanMod terrain door (mesh contract, compile/render
+        // 52. Phase D: Sodium/VulkanMod terrain door (mesh contract, compile/render
         // decisions, pack targets, shadow lag/cull, per-frame uniforms, fallback reasons)
         try {
-            System.out.println("\n[50/50] Running PhaseDTerrainDoorTest...");
+            System.out.println("\n[52/54] Running PhaseDTerrainDoorTest...");
             PhaseDTerrainDoorTest phaseDTest = new PhaseDTerrainDoorTest();
             phaseDTest.testVertexContractLayout();
             phaseDTest.testVertexContractSettlesOnce();
@@ -1144,9 +1144,9 @@ public class VulkairisTestRunner {
             failed++;
         }
 
-        // 51. Phase 1: production readiness state machine and truthful pass gating
+        // 53. Phase 1: production readiness state machine and truthful pass gating
         try {
-            System.out.println("\n[51/52] Running ReadinessStateMachineTest...");
+            System.out.println("\n[53/54] Running ReadinessStateMachineTest...");
             ReadinessStateMachineTest readinessTest = new ReadinessStateMachineTest();
             readinessTest.setUp();
             readinessTest.testInitialStateIsNoPack();
@@ -1168,9 +1168,9 @@ public class VulkairisTestRunner {
             failed++;
         }
 
-        // 52. Phase 2: render lifecycle stage mapping, hook table, and ordering validator
+        // 54. Phase 2: render lifecycle stage mapping, hook table, and ordering validator
         try {
-            System.out.println("\n[52/52] Running RenderLifecycleTest...");
+            System.out.println("\n[54/54] Running RenderLifecycleTest...");
             RenderLifecycleTest lifecycleTest = new RenderLifecycleTest();
             lifecycleTest.setUp();
             lifecycleTest.testStageOrderValuesAndIndices();

@@ -206,7 +206,7 @@ public final class ShaderWarmup {
             boolean isVertex = entry.shadercKind() == Shaderc.shaderc_glsl_vertex_shader;
             String translated;
             try {
-                translated = ShaderTranslator.preprocessGlsl(entry.source(), isVertex);
+                translated = ShaderTranslator.preprocessGlsl(entry.source(), isVertex, entry.name());
             } catch (Throwable t) {
                 FAILED.incrementAndGet();
                 LOGGER.debug("[Vulkairis/Warmup] Translation failed for '{}': {}",

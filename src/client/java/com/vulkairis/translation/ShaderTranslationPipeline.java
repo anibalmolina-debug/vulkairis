@@ -66,7 +66,7 @@ public final class ShaderTranslationPipeline {
 
         String transformed;
         try {
-            transformed = ShaderTranslator.preprocessGlsl(rawSource, isVertex);
+            transformed = ShaderTranslator.preprocessGlsl(rawSource, isVertex, name);
             PassResult result = new PassResult("normalize-glsl", true,
                     transformed.length() + " chars");
             passes.add(result);

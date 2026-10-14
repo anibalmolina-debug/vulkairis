@@ -316,7 +316,7 @@ public class SpirvCompiler {
         String failureLog = null;
         try {
             boolean isVertex = (shadercKind == Shaderc.shaderc_glsl_vertex_shader);
-            String preprocessed = ShaderTranslator.preprocessGlsl(glslSource, isVertex);
+            String preprocessed = ShaderTranslator.preprocessGlsl(glslSource, isVertex, name);
             com.vulkairis.diagnostics.StageDiagnostics.pass("GLSL preprocessing", name);
             com.vulkairis.iris.SourceProvenance.recordTranslation(
                     com.vulkairis.iris.IrisBridge.getCurrentPackName(),

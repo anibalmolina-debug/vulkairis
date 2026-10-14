@@ -137,9 +137,9 @@ public final class VulkanModProgramBridge {
             // raw binding number). Compact every descriptor into a dense 0..N-1 range before handing
             // the source to VulkanMod, using one shared map so both stages agree on bindings.
             String vertSrc = ShaderTranslator.normalizeTypesForVulkanMod(
-                    ShaderTranslator.preprocessGlsl(vert.glslSource(), true));
+                    ShaderTranslator.preprocessGlsl(vert.glslSource(), true, vert.getName()));
             String fragSrc = ShaderTranslator.normalizeTypesForVulkanMod(
-                    ShaderTranslator.preprocessGlsl(frag.glslSource(), false));
+                    ShaderTranslator.preprocessGlsl(frag.glslSource(), false, frag.getName()));
 
             Map<String, Integer> bindings = buildUnifiedBindingMap(vertSrc, fragSrc);
             // remapDescriptorBindings already routes opaque declarations through

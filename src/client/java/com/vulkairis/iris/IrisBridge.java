@@ -232,7 +232,7 @@ public class IrisBridge {
     private static void prewarmOne(String name, String source, boolean isVertex, long generation) {
         try {
             com.vulkairis.translation.TranslationWorker.submit(name, generation,
-                    () -> com.vulkairis.translation.ShaderTranslator.preprocessGlsl(source, isVertex));
+                    () -> com.vulkairis.translation.ShaderTranslator.preprocessGlsl(source, isVertex, name));
         } catch (Throwable t) {
             LOGGER.debug("[Vulkairis/IrisBridge] Prewarm submit notice for '{}': {}",
                     name, t.getMessage());
