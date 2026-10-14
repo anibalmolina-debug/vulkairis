@@ -1,6 +1,6 @@
 package com.vulkairis.framebuffer;
 
-import com.vulkairis.vulkan.VulkanDevice;
+import com.vulkairis.backend.vulkanmod.VulkanBackendAdapter;
 import com.vulkairis.vulkan.VulkanSyncPrimitives;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.*;
@@ -27,8 +27,8 @@ public class VulkanImageResource {
         this.height = height;
         this.format = format;
 
-        VkDevice device = VulkanDevice.getDevice();
-        if (!VulkanDevice.isLive(device)) return;
+        VkDevice device = VulkanBackendAdapter.getDevice();
+        if (!VulkanBackendAdapter.isLive(device)) return;
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkImageCreateInfo imageInfo = VkImageCreateInfo.calloc(stack)
@@ -84,8 +84,8 @@ public class VulkanImageResource {
     }
 
     public void destroy() {
-        VkDevice device = VulkanDevice.getDevice();
-        if (VulkanDevice.isLive(device)) {
+        VkDevice device = VulkanBackendAdapter.getDevice();
+        if (VulkanBackendAdapter.isLive(device)) {
             if (imageHandle != 0L) {
                 VK10.vkDestroyImage(device, imageHandle, null);
                 imageHandle = 0L;

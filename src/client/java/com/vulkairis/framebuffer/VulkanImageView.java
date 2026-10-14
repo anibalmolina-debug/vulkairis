@@ -1,6 +1,6 @@
 package com.vulkairis.framebuffer;
 
-import com.vulkairis.vulkan.VulkanDevice;
+import com.vulkairis.backend.vulkanmod.VulkanBackendAdapter;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDevice;
@@ -19,8 +19,8 @@ public class VulkanImageView {
     private long viewHandle = 0L;
 
     public VulkanImageView(long image, int format, int aspectMask) {
-        VkDevice device = VulkanDevice.getDevice();
-        if (!VulkanDevice.isLive(device) || image == 0L) return;
+        VkDevice device = VulkanBackendAdapter.getDevice();
+        if (!VulkanBackendAdapter.isLive(device) || image == 0L) return;
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkImageViewCreateInfo viewInfo = VkImageViewCreateInfo.calloc(stack)
@@ -52,8 +52,8 @@ public class VulkanImageView {
     }
 
     public void destroy() {
-        VkDevice device = VulkanDevice.getDevice();
-        if (VulkanDevice.isLive(device) && viewHandle != 0L) {
+        VkDevice device = VulkanBackendAdapter.getDevice();
+        if (VulkanBackendAdapter.isLive(device) && viewHandle != 0L) {
             VK10.vkDestroyImageView(device, viewHandle, null);
             viewHandle = 0L;
         }

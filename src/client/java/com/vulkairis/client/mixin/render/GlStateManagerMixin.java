@@ -16,19 +16,11 @@ import org.spongepowered.asm.mixin.Unique;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Mixin(GlStateManager.class)
 public class GlStateManagerMixin {
     @Unique
     private static final Logger VULKAIRIS_LOGGER = LogManager.getLogger("Vulkairis/GlStateManagerMixin");
-
-    @Unique
-    private static final Map<String, Integer> UNIFORM_LOCATIONS = new ConcurrentHashMap<>();
-    @Unique
-    private static final AtomicInteger UNIFORM_ID_GEN = new AtomicInteger(100);
 
     static {
         com.vulkairis.iris.StateUpdateNotifierManager.ensureInitialized();
@@ -41,11 +33,13 @@ public class GlStateManagerMixin {
      */
     @Overwrite
     public static void glActiveTexture(int texture) {
-        int unit = texture - 33984; // GL_TEXTURE0 is 33984
-        if (unit >= 0 && unit < 12) {
+        java.util.OptionalInt unit =
+                com.vulkairis.rendering.state.TextureUnitPolicy.toUnit(texture);
+        if (unit.isPresent()) {
             VkGlTexture.activeTexture(texture);
         } else {
-            VULKAIRIS_LOGGER.debug("[Vulkairis] Virtualizing glActiveTexture({}) unit {} outside VulkanMod [0, 11] range", texture, unit);
+            VULKAIRIS_LOGGER.debug("[Vulkairis] Virtualizing glActiveTexture({}) outside supported range 0..{}",
+                    texture, com.vulkairis.rendering.state.TextureUnitPolicy.MAX_SUPPORTED_UNIT);
         }
     }
 
@@ -114,11 +108,10 @@ public class GlStateManagerMixin {
     /**
      * @author Vulkairis
      * @reason Return GL_NO_ERROR (0) without calling raw GL11.glGetError.
+     * Note: VulkanMod already overwrites this method; we deliberately do not, to avoid a
+     * method-overwrite conflict that would mask VulkanMod's handling.
      */
-    @Overwrite
-    public static int _getError() {
-        return 0;
-    }
+    // _getError() intentionally not overwritten here.
 
     /**
      * @author Vulkairis
@@ -175,11 +168,31 @@ public class GlStateManagerMixin {
 
     /**
      * @author Vulkairis
-     * @reason Intercept glCheckFramebufferStatus to always return GL_FRAMEBUFFER_COMPLETE (36053).
+     * @reason Validate framebuffer attachments instead of reporting fabricated completeness.
+     * Framebuffers with tracked attachments get a real verdict (missing/broken attachments
+     * report the GL incomplete codes); untracked ids are foreign VulkanMod/vanilla objects
+     * and keep the legacy COMPLETE answer so their paths keep working.
+     *
+     * <p>Phase 5/8 contract. Test: {@code FramebufferValidatorTest} (pure) — the mixin stays a
+     * thin branch. Fallback: incomplete codes with no crash.</p>
      */
     @Overwrite
     public static int glCheckFramebufferStatus(int target) {
-        return 36053; // GL_FRAMEBUFFER_COMPLETE
+        try {
+            java.util.Map<Integer, com.vulkairis.rendering.state.ResourceBindings.FramebufferAttachment> attachments =
+                    com.vulkairis.rendering.state.VulkairisRenderState.get()
+                            .bindings().getAttachments(target);
+            if (attachments.isEmpty()
+                    && com.vulkairis.rendering.state.VulkairisRenderState.get()
+                            .bindings().getDrawBuffers(target).length == 0) {
+                return 36053; // Foreign framebuffer: legacy answer preserved.
+            }
+            return com.vulkairis.rendering.FramebufferValidator.validate(target, attachments)
+                    .glStatus();
+        } catch (Throwable t) {
+            VULKAIRIS_LOGGER.warn("[Vulkairis] Framebuffer status check notice: {}", t.getMessage());
+            return 36053;
+        }
     }
 
     /**
@@ -194,74 +207,33 @@ public class GlStateManagerMixin {
 
     /**
      * @author Vulkairis
-     * @reason Check if the shader program actually declares the uniform; return -1 if not declared to avoid exhausting sampler/image units.
+     * @reason Check if the shader program actually declares the uniform, backed by SPIR-V
+     * reflection instead of source-text scanning (a word inside a comment or a similarly named
+     * identifier never counts). Missing uniforms yield -1; deleted/unknown programs yield -1.
+     *
+     * <p>Phase 5 contract (pinned target: Iris 1.8.14 {@code ProgramUniforms$Builder}, the only
+     * live caller on the supported path): locations are stable per program/name and resolve
+     * through {@link com.vulkairis.translation.VirtualGlFacade}. Test:
+     * {@code VirtualGlStatusTest}. Fallback: -1, which makes Iris skip the uniform.</p>
      */
     @Overwrite
     public static int _glGetUniformLocation(int program, CharSequence name) {
-        if (name == null) return -1;
-        String uniformName = name.toString();
-
-        com.vulkairis.translation.VulkairisProgram prog = VulkanShaderRegistry.getProgram(program);
-        if (prog != null && prog.attachedShaderIds() != null && !prog.attachedShaderIds().isEmpty()) {
-            String baseName = uniformName;
-            int bracket = uniformName.indexOf('[');
-            if (bracket > 0) {
-                baseName = uniformName.substring(0, bracket);
-            }
-
-            boolean declared = false;
-            for (int sId : prog.attachedShaderIds()) {
-                com.vulkairis.translation.VulkairisShader shader = VulkanShaderRegistry.getShader(sId);
-                if (shader != null && shader.glslSource() != null) {
-                    if (containsWord(shader.glslSource(), baseName)) {
-                        declared = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!declared) {
-                return -1;
-            }
-        }
-
-        String key = program + ":" + uniformName;
-        return UNIFORM_LOCATIONS.computeIfAbsent(key, k -> UNIFORM_ID_GEN.incrementAndGet());
-    }
-
-    @Unique
-    private static boolean containsWord(String source, String word) {
-        if (source == null || word == null || word.isEmpty()) return false;
-        int wordLen = word.length();
-        int srcLen = source.length();
-        int index = 0;
-
-        while ((index = source.indexOf(word, index)) != -1) {
-            boolean startBoundary = (index == 0) || !Character.isJavaIdentifierPart(source.charAt(index - 1));
-            int after = index + wordLen;
-            boolean endBoundary = (after >= srcLen) || !Character.isJavaIdentifierPart(source.charAt(after));
-
-            if (startBoundary && endBoundary) {
-                return true;
-            }
-            index += wordLen;
-        }
-        return false;
+        return com.vulkairis.translation.VirtualGlFacade.getUniformLocation(program, name);
     }
 
     /**
      * @author Vulkairis
-     * @reason Prevent raw OpenGL glGetAttribLocation call; allocate virtual attribute locations.
+     * @reason Prevent raw OpenGL glGetAttribLocation call; resolve against reflected vertex
+     * attributes (exact, then case-insensitive) instead of fuzzy substring guessing, with -1 for
+     * unknown names. Deterministic across reloads; no ad-hoc id allocation.
+     *
+     * <p>Phase 5 contract (pinned target: Iris/Sodium attribute queries on the supported path).
+     * Test: {@code VirtualGlStatusTest}. Fallback: -1, which makes the caller skip the
+     * attribute.</p>
      */
     @Overwrite
     public static int _glGetAttribLocation(int program, CharSequence name) {
-        if (name == null) return -1;
-        String n = name.toString().toLowerCase();
-        if (n.contains("position")) return 0;
-        if (n.contains("color")) return 1;
-        if (n.contains("uv") || n.contains("texcoord")) return 2;
-        if (n.contains("normal")) return 3;
-        return UNIFORM_LOCATIONS.computeIfAbsent(program + ":attrib:" + name, k -> UNIFORM_ID_GEN.incrementAndGet());
+        return com.vulkairis.translation.VirtualGlFacade.getAttribLocation(program, name);
     }
 
     /**
@@ -273,18 +245,32 @@ public class GlStateManagerMixin {
 
     /**
      * @author Vulkairis
-     * @reason Return safe program status values without calling raw OpenGL glGetProgrami.
+     * @reason Return real program status values without calling raw OpenGL glGetProgrami.
+     * LINK_STATUS is true only for explicitly linked programs (never simulated); counts come
+     * from reflection; unknown ids keep the legacy constants so foreign paths keep working.
+     *
+     * <p>Phase 5 contract (pinned targets: Iris 1.8.14 {@code ProgramCreator.create} and
+     * {@code ProgramUniforms$Builder}, the live query sites on the supported path). Test:
+     * {@code VirtualGlStatusTest}. Fallback: failed/deleted programs report 0/empty.</p>
      */
     @Overwrite
     public static int glGetProgrami(int program, int pname) {
-        return switch (pname) {
-            case 35714 -> 1;  // GL_LINK_STATUS -> GL_TRUE
-            case 35716 -> 0;  // GL_INFO_LOG_LENGTH -> 0
-            case 35717 -> 2;  // GL_ATTACHED_SHADERS -> 2
-            case 35718 -> 0;  // GL_ACTIVE_UNIFORMS -> 0
-            case 35721 -> 8;  // GL_ACTIVE_ATTRIBUTES -> 8
-            default -> 1;
-        };
+        return com.vulkairis.translation.VirtualGlFacade.getProgrami(program, pname);
+    }
+
+    /**
+     * @author Vulkairis
+     * @reason Return real shader compile status without raw OpenGL. COMPILE_STATUS is true only
+     * for shaders holding validated bytecode plus complete reflection; deleted/failed shaders
+     * report failure with their retained log. Closes the raw-GL escape for any live caller
+     * outside the intercepted {@code createShader} path.
+     *
+     * <p>Phase 5 contract. Test: {@code VirtualGlStatusTest}. Fallback: unknown ids keep the
+     * legacy success assumption so foreign-managed objects keep working.</p>
+     */
+    @Overwrite
+    public static int glGetShaderi(int shader, int pname) {
+        return com.vulkairis.translation.VirtualGlFacade.getShaderi(shader, pname);
     }
 
     /**
@@ -296,11 +282,12 @@ public class GlStateManagerMixin {
 
     /**
      * @author Vulkairis
-     * @reason Return empty log without raw OpenGL calls.
+     * @reason Return the retained program info log without raw OpenGL calls ("" when linked
+     * clean, precise problems after a failed link, deletion note for tombstones).
      */
     @Overwrite
     public static String glGetProgramInfoLog(int program, int maxLength) {
-        return "";
+        return com.vulkairis.translation.VirtualGlFacade.getProgramInfoLog(program);
     }
 
     /**

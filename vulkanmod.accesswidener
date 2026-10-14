@@ -1,0 +1,12 @@
+accessWidener	v1	intermediary
+accessible	class	net/minecraft/class_630$class_593
+accessible	class	net/minecraft/class_630$class_618
+accessible	class	net/minecraft/class_329$class_6411
+accessible	class	net/minecraft/class_4618$class_4586
+accessible	class	net/minecraft/class_7764$class_7765
+accessible	class	net/minecraft/class_7764$class_5791
+accessible	class	net/minecraft/class_7764$class_5790
+accessible	field	net/minecraft/class_7764$class_5790	field_28472	Ljava/util/List;
+accessible	field	net/minecraft/class_7764$class_5791	field_28476	I
+accessible	field	com/mojang/blaze3d/systems/RenderSystem	vertexSorting	Lnet/minecraft/class_8251;
+accessible	field	net/minecraft/class_4668	field_21363	Ljava/lang/String;

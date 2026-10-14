@@ -1,5 +1,6 @@
 package com.vulkairis.bridge;
 
+import com.vulkairis.core.RenderMatrices;
 import com.vulkairis.rendering.RenderStateTracker;
 import com.vulkairis.vulkan.descriptor.VulkanDescriptorManager;
 import org.joml.Matrix4f;
@@ -10,13 +11,15 @@ import org.joml.Matrix4f;
 public class OpenGLBridge {
     /**
      * Correction matrix adapting OpenGL clip space Z [-1, 1] to Vulkan clip space Z [0, 1].
+     *
+     * @deprecated The authoritative definition now lives in
+     *     {@link RenderMatrices#CLIP_SPACE_CORRECTION}. This alias is kept only for source
+     *     compatibility and references the very same instance. Note that it does <em>not</em> flip
+     *     Y, because {@code SpirvCompiler} already emits {@code set_invert_y(true)}; adding a Y
+     *     flip here would double-invert and break orientation.
      */
-    public static final Matrix4f CLIP_SPACE_CORRECTION = new Matrix4f(
-            1.0f,  0.0f, 0.0f, 0.0f,
-            0.0f, -1.0f, 0.0f, 0.0f, // Also flips Y if not already handled by compiler
-            0.0f,  0.0f, 0.5f, 0.5f,
-            0.0f,  0.0f, 0.0f, 1.0f
-    );
+    @Deprecated
+    public static final Matrix4f CLIP_SPACE_CORRECTION = RenderMatrices.CLIP_SPACE_CORRECTION;
 
     public static void setTextureBinding(long descriptorSet, int binding, int glTextureId) {
         VulkanDescriptorManager.updateTextureBinding(descriptorSet, binding, glTextureId);

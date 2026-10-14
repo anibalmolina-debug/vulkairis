@@ -1,6 +1,6 @@
 package com.vulkairis.framebuffer;
 
-import com.vulkairis.vulkan.VulkanDevice;
+import com.vulkairis.backend.vulkanmod.VulkanBackendAdapter;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDevice;
@@ -18,7 +18,12 @@ import java.util.concurrent.ConcurrentHashMap;
 public class VulkanSampler {
     private static final Logger LOGGER = LoggerFactory.getLogger("Vulkairis/Sampler");
 
-    public record SamplerKey(int minFilter, int magFilter, int addressMode) {}
+    public record SamplerKey(int minFilter, int magFilter, int addressMode, boolean compareEnable) {
+        /** Legacy shape: comparison disabled. */
+        public SamplerKey(int minFilter, int magFilter, int addressMode) {
+            this(minFilter, magFilter, addressMode, false);
+        }
+    }
 
     private static final Map<SamplerKey, Long> SAMPLER_CACHE = new ConcurrentHashMap<>();
 
@@ -30,9 +35,24 @@ public class VulkanSampler {
         return SAMPLER_CACHE.computeIfAbsent(key, VulkanSampler::createSampler);
     }
 
+    /**
+     * Phase 10: policy-driven sampler creation. Depth/shadow policies materialize real
+     * comparison samplers ({@code compareOp = LESS_OR_EQUAL}); without this, shadow lookups
+     * would silently sample raw depth. Anisotropy stays disabled and mipmap interpolation
+     * stays linear — both documented limitations, not silent behavior.
+     */
+    public static long getOrCreateSampler(com.vulkairis.resource.SamplerPolicy policy) {
+        if (policy == null) {
+            return getOrCreateSampler(true, false);
+        }
+        SamplerKey key = new SamplerKey(policy.minFilter(), policy.magFilter(),
+                policy.addressMode(), policy.isCompareEnabled());
+        return SAMPLER_CACHE.computeIfAbsent(key, VulkanSampler::createSampler);
+    }
+
     private static long createSampler(SamplerKey key) {
-        VkDevice device = VulkanDevice.getDevice();
-        if (!VulkanDevice.isLive(device)) return 0L;
+        VkDevice device = VulkanBackendAdapter.getDevice();
+        if (!VulkanBackendAdapter.isLive(device)) return 0L;
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkSamplerCreateInfo samplerInfo = VkSamplerCreateInfo.calloc(stack)
@@ -45,7 +65,9 @@ public class VulkanSampler {
                     .anisotropyEnable(false)
                     .borderColor(VK10.VK_BORDER_COLOR_INT_OPAQUE_BLACK)
                     .unnormalizedCoordinates(false)
-                    .compareEnable(false)
+                    .compareEnable(key.compareEnable())
+                    .compareOp(key.compareEnable()
+                            ? VK10.VK_COMPARE_OP_LESS_OR_EQUAL : VK10.VK_COMPARE_OP_NEVER)
                     .mipmapMode(VK10.VK_SAMPLER_MIPMAP_MODE_LINEAR);
 
             LongBuffer pSampler = stack.mallocLong(1);
@@ -63,8 +85,8 @@ public class VulkanSampler {
     }
 
     public static void cleanUp() {
-        VkDevice device = VulkanDevice.getDevice();
-        if (VulkanDevice.isLive(device)) {
+        VkDevice device = VulkanBackendAdapter.getDevice();
+        if (VulkanBackendAdapter.isLive(device)) {
             SAMPLER_CACHE.forEach((key, sampler) -> {
                 if (sampler != 0L) {
                     try {

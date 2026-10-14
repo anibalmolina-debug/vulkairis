@@ -19,6 +19,28 @@
 @if "%DEBUG%"=="" @echo off
 @rem ##########################################################################
 @rem
+@rem  Vulkairis: Fabric's dev launcher cannot handle a Gradle home whose path
+@rem  contains non-ASCII characters (e.g. a user profile named "Molina Nunez"
+@rem  with the enye). It mangles those paths, so Fabric Loader/Mixin classes
+@rem  end up in the wrong classloader and the client fails at startup with
+@rem  "cannot be cast to IMixinConfigPlugin" / "trying to load FabricLoaderImpl
+@rem  from target class loader".
+@rem
+@rem  When GRADLE_USER_HOME is not already set, route it through a short ASCII
+@rem  junction to the real Gradle home. This is a no-op when the profile is
+@rem  already ASCII or when the junction cannot be created.
+@rem
+@rem ##########################################################################
+if not defined GRADLE_USER_HOME (
+  set "VULKAIRIS_GRADLE_HOME=%~d0\gradle-ascii"
+  if not exist "%VULKAIRIS_GRADLE_HOME%\caches" (
+    if exist "%USERPROFILE%\.gradle" cmd /c mklink /J "%VULKAIRIS_GRADLE_HOME%" "%USERPROFILE%\.gradle" >nul 2>&1
+  )
+  if exist "%VULKAIRIS_GRADLE_HOME%\caches" set "GRADLE_USER_HOME=%VULKAIRIS_GRADLE_HOME%"
+)
+
+@rem ##########################################################################
+@rem
 @rem  Gradle startup script for Windows
 @rem
 @rem ##########################################################################

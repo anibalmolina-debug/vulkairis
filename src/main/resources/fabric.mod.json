@@ -12,8 +12,8 @@
 		"sources": "https://github.com/anibalmolina-debug/vulkairis"
 	},
 	"license": "MIT",
-	"icon": "assets/vulkairis/e408285bdef7774544772030f8b88a98d875d0f2_96.png",
-	"environment": "*",
+	"icon": "assets/vulkairis/Icon.png",
+	"environment": "client",
 	"entrypoints": {
 		"preLaunch": [
 			"com.vulkairis.client.VulkairisPreLaunch"
@@ -26,6 +26,9 @@
 		],
 		"fabric-datagen": [
 			"com.vulkairis.client.VulkairisDataGenerator"
+		],
+		"modmenu": [
+			"com.vulkairis.client.gui.VulkairisModMenu"
 		]
 	},
 	"mixins": [
@@ -35,15 +38,13 @@
 			"environment": "client"
 		}
 	],
-	"provides": [
-		"sodium"
-	],
 	"depends": {
-		"fabricloader": ">=0.19.3",
+		"fabricloader": ">=0.19.5",
 		"minecraft": "~1.21.1",
 		"java": ">=21",
-		"fabric-api": "*",
-		"iris": "*",
-		"vulkanmod": "*"
-	}
+		"fabric-api": "0.116.17+1.21.1",
+		"iris": "1.8.14-beta.1+mc1.21.1",
+		"vulkanmod": "0.6.7+1.21.1"
+	},
+	"provides": ["sodium"]
 }

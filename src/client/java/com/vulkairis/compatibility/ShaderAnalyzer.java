@@ -47,7 +47,10 @@ public class ShaderAnalyzer {
             ByteBuffer spirv = SpirvCompiler.compileGlslToSpirv(shaderName, preprocessed, shadercKind);
 
             // 4. SPIR-V structure validation
-            SpirvValidator.validate(spirv);
+            SpirvValidator.ValidationResult validation = SpirvValidator.validate(spirv);
+            if (!validation.valid()) {
+                throw new RuntimeException("Invalid SPIR-V: " + validation.detail());
+            }
 
             LOGGER.info("[Vulkairis/Analyzer] Shader '{}' passed dry-run analysis (SPIR-V: {} bytes)",
                     shaderName, spirv.remaining());

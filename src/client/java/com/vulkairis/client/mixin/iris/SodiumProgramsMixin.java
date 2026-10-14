@@ -7,6 +7,7 @@ import net.caffeinemc.mods.sodium.client.render.chunk.shader.ChunkShaderInterfac
 import net.irisshaders.iris.gl.blending.AlphaTest;
 import net.irisshaders.iris.pipeline.IrisRenderingPipeline;
 import net.irisshaders.iris.pipeline.programs.SodiumPrograms;
+import net.irisshaders.iris.pipeline.programs.SodiumPrograms.Pass;
 import net.irisshaders.iris.pipeline.transform.PatchShaderType;
 import net.irisshaders.iris.shaderpack.programs.ProgramSource;
 import net.irisshaders.iris.uniforms.custom.CustomUniforms;
@@ -17,12 +18,17 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.function.Supplier;
 
+/**
+ * @author Vulkairis
+ * @reason Sodium terrain OpenGL shaders are not used under VulkanMod; stub to avoid NoSuchMethodError on GlShader constructor.
+ *        This mixin replaces SodiumPrograms methods with no-ops compatible with the VulkanMod pipeline.
+ */
 @Mixin(value = SodiumPrograms.class, remap = false)
 public class SodiumProgramsMixin {
 
     /**
      * @author Vulkairis
-     * @reason Sodium terrain OpenGL shaders are not used under VulkanMod; stub to avoid NoSuchMethodError on GlShader constructor.
+     * @reason Returns empty map — no GL shaders created when VulkanMod is active.
      */
     @Overwrite
     private Map<PatchShaderType, GlShader> createGlShaders(String name, Map<PatchShaderType, String> transformed) {
@@ -31,11 +37,11 @@ public class SodiumProgramsMixin {
 
     /**
      * @author Vulkairis
-     * @reason Sodium terrain OpenGL shaders are not used under VulkanMod; stub to avoid creating OpenGL GlProgram.
+     * @reason Returns null — no GlProgram created when VulkanMod is active.
      */
     @Overwrite
     private GlProgram<ChunkShaderInterface> createShader(IrisRenderingPipeline pipeline,
-                                                         SodiumPrograms.Pass pass,
+                                                         Pass pass,
                                                          ProgramSource source,
                                                          AlphaTest alphaTest,
                                                          CustomUniforms customUniforms,

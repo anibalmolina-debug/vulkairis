@@ -1,17 +1,29 @@
 package com.vulkairis.translation;
 
-import com.vulkairis.vulkan.VulkanDevice;
+import com.vulkairis.core.ShaderLifecycleState;
+import com.vulkairis.backend.vulkanmod.VulkanBackendAdapter;
 import net.irisshaders.iris.gl.shader.ShaderType;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDevice;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 
 /**
  * First-class encapsulation of a compiled shader module in the Vulkairis bridge.
  * Retains Vulkan VkShaderModule handle, raw SPIR-V bytecode, GLSL source, and reflection metadata.
+ *
+ * <p>Retention policy (Phase 7): the translated GLSL source and SPIR-V bytes are CPU-owned data
+ * retained <em>only</em> while the shader is registered — the VulkanMod bridge recompiles from
+ * the source and diagnostics hash it. Deleting the shader from
+ * {@code VulkanShaderRegistry} drops the registry reference so both buffers become collectable;
+ * nothing retains them beyond the registry. The native module handle is device-owned and freed
+ * exactly once via {@link #destroy}.</p>
  */
 public class VulkairisShader {
+    private static final Logger LIFECYCLE_LOGGER = LoggerFactory.getLogger("Vulkairis/Lifecycle");
+
     private final int virtualId;
     private final String name;
     private final int stage;
@@ -20,6 +32,9 @@ public class VulkairisShader {
     private final String glslSource;
     private final String entryPoint;
     private final ShaderReflection reflection;
+    private volatile ShaderLifecycleState lifecycleState = ShaderLifecycleState.DISCOVERED;
+    /** Device generation at creation; see {@link VulkanBackendAdapter#currentGeneration()}. */
+    private final long deviceGeneration;
 
     public VulkairisShader(int virtualId, String name, int stage, long vkShaderModule,
                            ByteBuffer spirv, String glslSource, String entryPoint,
@@ -32,6 +47,8 @@ public class VulkairisShader {
         this.glslSource = glslSource;
         this.entryPoint = (entryPoint != null && !entryPoint.isEmpty()) ? entryPoint : "main";
         this.reflection = reflection != null ? reflection : new ShaderReflection();
+        this.deviceGeneration = VulkanBackendAdapter.currentGeneration();
+        initializeLifecycleState();
     }
 
     public VulkairisShader(int virtualId, String name, int stage, long vkShaderModule,
@@ -95,6 +112,16 @@ public class VulkairisShader {
         return reflection;
     }
 
+    /** @return the device generation that created this shader's handles */
+    public long getDeviceGeneration() {
+        return deviceGeneration;
+    }
+
+    /** @return whether the device was recreated since this shader was created */
+    public boolean isStale() {
+        return VulkanBackendAdapter.isStaleGeneration(deviceGeneration);
+    }
+
     public boolean isValid() {
         return vkShaderModule != 0L;
     }
@@ -121,6 +148,64 @@ public class VulkairisShader {
         };
     }
 
+    /**
+     * Returns the current lifecycle state of this shader. Never {@code null}.
+     */
+    public ShaderLifecycleState getLifecycleState() {
+        return lifecycleState;
+    }
+
+    /**
+     * Advances this shader along its execution lifecycle. Only forward moves are honoured;
+     * attempts to move backwards (or repeat the current state) are ignored. Transitions are logged
+     * at INFO on the {@code Vulkairis/Lifecycle} logger.
+     *
+     * @param next the target state; {@code null} is ignored
+     */
+    public synchronized void advanceLifecycle(ShaderLifecycleState next) {
+        if (next == null) return;
+
+        ShaderLifecycleState prev = lifecycleState;
+        if (prev == next || !prev.canTransitionTo(next)) {
+            return;
+        }
+
+        lifecycleState = next;
+        try {
+            LIFECYCLE_LOGGER.info("[Vulkairis] Shader '{}' {} -> {}", name, prev, next);
+        } catch (Throwable ignored) {
+            // Logging must never interfere with shader bookkeeping.
+        }
+    }
+
+    /**
+     * Derives the initial lifecycle state from the data actually present on this shader, then
+     * promotes to {@link ShaderLifecycleState#REFLECTED} when complete reflection metadata exists.
+     * Called at the end of the main constructor; must never throw.
+     */
+    private synchronized void initializeLifecycleState() {
+        try {
+            ShaderLifecycleState initial;
+            if (vkShaderModule != 0L) {
+                initial = ShaderLifecycleState.MODULE_CREATED;
+            } else if (spirv != null && spirv.hasRemaining()) {
+                initial = ShaderLifecycleState.SPIRV_VALID;
+            } else if (glslSource != null && !glslSource.isBlank()) {
+                initial = ShaderLifecycleState.COMPILED;
+            } else {
+                initial = ShaderLifecycleState.DISCOVERED;
+            }
+            this.lifecycleState = initial;
+
+            if (reflection != null && reflection.isComplete()
+                    && lifecycleState.isAtLeast(ShaderLifecycleState.SPIRV_VALID)) {
+                advanceLifecycle(ShaderLifecycleState.REFLECTED);
+            }
+        } catch (Throwable ignored) {
+            // Lifecycle tracking must never break shader construction.
+        }
+    }
+
     public synchronized void destroy(VkDevice device) {
         if (vkShaderModule != 0L) {
             ShaderModuleFactory.destroyShaderModule(device, vkShaderModule);
@@ -129,7 +214,7 @@ public class VulkairisShader {
     }
 
     public synchronized void destroy() {
-        destroy(VulkanDevice.getDevice());
+        destroy(VulkanBackendAdapter.getDevice());
     }
 
     @Override

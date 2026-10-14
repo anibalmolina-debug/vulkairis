@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Vulkairis â€” Iris â†” VulkanMod Bridge
 
 Vulkairis is a baseline prototype designed to bridge Iris Shaders and VulkanMod, allowing Iris's GLSL shaders to be compiled to SPIR-V and executed on VulkanMod's renderer.
@@ -44,7 +43,7 @@ Vulkairis is a baseline prototype designed to bridge Iris Shaders and VulkanMod,
 2. **GLSL â†’ SPIR-V Translation (in-process Shaderc)**:
    - Uses LWJGL `org.lwjgl.util.shaderc.Shaderc`.
    - Inverts Y axis automatically via `shaderc_compile_options_set_invert_y(options, true)`.
-   - Target environment: Vulkan 1.2 / 1.1.
+   - Target environment: Vulkan 1.1 (SPIR-V 1.3), pinned compilation profile.
 3. **Vulkan Shader & Pipeline Registry**:
    - `VulkanShaderRegistry` creates `VkShaderModule` on VulkanMod's active `VkDevice` (`net.vulkanmod.vulkan.Vulkan.getVkDevice()`).
    - Maps virtual GL shader/program IDs to Vulkan handles.
@@ -52,9 +51,50 @@ Vulkairis is a baseline prototype designed to bridge Iris Shaders and VulkanMod,
    - Depth range correction: OpenGL $[-1, 1]$ clip space to Vulkan $[0, 1]$ clip space via matrix multiplication:
      $$\begin{pmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0.5 & 0.5 \\ 0 & 0 & 0 & 1 \end{pmatrix}$$
 5. **Test Draw Call**:
-   - `BridgeTestRenderer` issues a single test quad draw call inside VulkanMod's active frame render pass to verify end-to-end execution without Vulkan validation layer errors.
-=======
-# Vulkairis
+   - Controlled draws (`StandaloneVulkanTest`) run only behind an explicit debug toggle
+     (default off) inside the active world pass, with per-pass pipelines and dynamic-state
+     restore, to verify end-to-end execution without Vulkan validation layer errors.
 
-Vulkairis is a client-side bridge between Iris shader rendering and Vulkan-based rendering for Minecraft 1.21.1.
->>>>>>> 35c6fbd1d492b8ea2a89673cf922f517c2010556
+---
+
+## Current Status (Phase 13)
+
+**Status**: Experimental prototype — not generally compatible with Iris shader packs.
+**Target Stack**: Minecraft 1.21.1, Fabric, Java 21, Iris `1.8.14-beta.1+mc1.21.1`, VulkanMod `0.6.7+1.21.1`, Fabric API `0.116.17+1.21.1`.
+
+What works today: Iris source interception with provenance tracking, token-based GLSL
+translation passes, honest SPIR-V compile/validate/reflect results, validated program links,
+truthful virtual GL status queries, target descriptors with validation, isolated uniform
+packing, gated pass scheduling with frame traces, and layered caching with generation-safe
+invalidation. The automated suite (40 groups) covers all of the above headlessly.
+
+What does not work yet: terrain/entity/shadow/water render-stage execution, full semantic
+SPIR-V validation, tessellation/geometry/compute execution, and HUD/GUI interception (by
+design). Packs that need those are refused with a reason instead of rendered wrong. The
+composite/final post chain and controlled test draws are implemented but await game-run
+proof. See `CHANGELOG.md` and the in-code feature table
+(`com.vulkairis.compatibility.FeatureTable`) for the exact matrix.
+
+## Troubleshooting
+
+- **Square/panel in menus with no pack active**: ensure no debug render mode is on
+  (`/vulkairis mode off` — the default). If it persists, capture `/vulkairis status` plus a
+  screenshot;menu-square captures are tracked as named regressions.
+- **Bright outlines around blocks**: triage in order — depth copy/compare, target
+  alignment/resolution, normal attachments, blend/alpha, final composite/color space —
+  changing one variable per run. Report `/vulkairis targets` output with the screenshot.
+- **Shader compile failures**: `/vulkairis status` shows the last compile/link error with its
+  diagnostic ID (`VULK-N`). Enable `dumpTranslatedSource`/`dumpSpirv`/`dumpReflection` in
+  `config/vulkairis.json` to capture the exact failing artifacts into `run/vulkairis-dumps/`.
+- **"Shader pack rejected" fallback**: the pack needs an unimplemented stage (see
+  `/vulkairis compatibility`). Vanilla VulkanMod rendering continues; to use the pack,
+  relaunch with the OpenGL renderer and Iris.
+- **Unsupported stages/extensions**: tessellation, geometry and compute programs are refused
+  at link with the program named; check the info log via `/vulkairis shader`.
+
+## Collecting a diagnostic report
+
+1. Reproduce with a fixed scene (same world seed, camera, resolution, GUI scale, time).
+2. Run `/vulkairis status`, `/vulkairis shader`, `/vulkairis compatibility`,
+   `/vulkairis targets`, and `/vulkairis architecture` in-game.
+3. Attach `logs/latest.log` (and `run/vulkairis-dumps/` if dump flags were enabled).

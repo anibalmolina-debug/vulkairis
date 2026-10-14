@@ -24,12 +24,14 @@ public abstract class GLSLParserMixin {
     @Shadow private int currentTokenIdx;
     @Shadow private GLSLParser.Stage stage;
     @Shadow int currentOutAtt;
+    @Shadow int currentInAtt;
     @Shadow ArrayList<Attribute> vertInAttributes;
     @Shadow ArrayList<Attribute> vertOutAttributes;
     @Shadow ArrayList<Attribute> fragInAttributes;
     @Shadow ArrayList<Attribute> fragOutAttributes;
     @Shadow @Final Set<UniformBlock.Field> legacyUniforms;
     @Shadow List<UniformBlock> uniformBlocks;
+    @Shadow com.mojang.blaze3d.vertex.VertexFormat vertexFormat;
 
     @Shadow abstract void advanceToken(boolean skipSpacing);
     @Shadow abstract GLSLParser.TokenNode prevNode(boolean skipSpacing);
@@ -57,6 +59,21 @@ public abstract class GLSLParserMixin {
         }
 
         String fieldType = this.currentToken.value;
+        if (fieldType != null && (fieldType.contains("sampler") || fieldType.contains("Sampler") || fieldType.contains("image") || fieldType.contains("Image"))) {
+            while (this.currentToken.type != Token.TokenType.SEMICOLON && this.currentToken.type != Token.TokenType.EOF) {
+                this.advanceToken(true);
+            }
+            return null;
+        }
+
+        // VulkanMod's Uniform.createUniformInfo rejects `bool` with "not admitted type: bool",
+        // which otherwise aborts every Iris shadow/gbuffer program during pipeline creation.
+        // Normalize the type token in the stream so the parser sees an admitted type. The mapping
+        // lives in VulkanModTypeNormalizer so it cannot drift from the source-level translator.
+        if (com.vulkairis.translation.VulkanModTypeNormalizer.isRejectedType(fieldType)) {
+            fieldType = com.vulkairis.translation.VulkanModTypeNormalizer.normalizeType(fieldType);
+            this.currentToken.value = fieldType;
+        }
         this.advanceToken(true);
 
         String fieldName = "unknown";
@@ -71,6 +88,31 @@ public abstract class GLSLParserMixin {
         }
 
         return new UniformBlock.Field(fieldType, fieldName);
+    }
+
+    @Shadow abstract void parseSampler(net.vulkanmod.vulkan.shader.converter.Sampler.Type type);
+
+    /**
+     * @author Vulkairis
+     * @reason Support all sampler and image types (sampler2DShadow, sampler2DArray, etc.) without falling through to parseStorageUniform.
+     */
+    @Overwrite
+    private void parseUniform() {
+        this.advanceToken(true);
+        if (this.currentToken == null || this.currentToken.type != Token.TokenType.IDENTIFIER) {
+            return;
+        }
+
+        String type = this.currentToken.value;
+        if ("samplerCube".equals(type)) {
+            this.parseSampler(net.vulkanmod.vulkan.shader.converter.Sampler.Type.SAMPLER_CUBE);
+        } else if ("isamplerBuffer".equals(type)) {
+            this.parseSampler(net.vulkanmod.vulkan.shader.converter.Sampler.Type.I_SAMPLER_BUFFER);
+        } else if (type != null && (type.contains("sampler") || type.contains("Sampler") || type.contains("image") || type.contains("Image"))) {
+            this.parseSampler(net.vulkanmod.vulkan.shader.converter.Sampler.Type.SAMPLER_2D);
+        } else {
+            this.parseStorageUniform();
+        }
     }
 
     /**
@@ -248,7 +290,12 @@ public abstract class GLSLParserMixin {
 
         if (this.stage == GLSLParser.Stage.VERTEX) {
             if ("in".equalsIgnoreCase(ioType)) {
-                attribute.setLocation(-1);
+                // Resolve the location up front. VulkanMod's own post-pass treats -1 as "unknown"
+                // and looks the id up in the configured VertexFormat's element-name list; a negative
+                // location that survives produces an invalid layout(location = -1) and contributes to
+                // the downstream IndexOutOfBoundsException. Use the same name matching here, but fall
+                // back to an incrementing, never-negative location when the name is not in the format.
+                attribute.setLocation(this.resolveVertexInputLocation(name));
                 if (this.vertInAttributes != null) {
                     this.vertInAttributes.add(attribute);
                 }
@@ -278,6 +325,38 @@ public abstract class GLSLParserMixin {
         }
 
         this.appendNode(attribute);
+    }
+
+    /**
+     * Resolves the vertex-input location for {@code name}. Prefers VulkanMod's own name matching
+     * against the configured {@link com.mojang.blaze3d.vertex.VertexFormat} element names, so the
+     * attribute lands on the same slot the {@code GraphicsPipeline} vertex input state uses. When
+     * there is no format, or the name is not present, assigns an incrementing, never-negative
+     * location instead of the -1 sentinel — a negative location is what produced an invalid
+     * {@code layout(location = -1)} and the downstream {@code IndexOutOfBoundsException}.
+     *
+     * <p>The fallback starts past the format's element count when a format is present, so an
+     * unmatched attribute can never collide with a later attribute that <em>is</em> matched to a
+     * format element by name (whose location equals its element index).</p>
+     */
+    private int resolveVertexInputLocation(String name) {
+        List<String> elementNames = null;
+        if (this.vertexFormat != null) {
+            elementNames = this.vertexFormat.getElementAttributeNames();
+        }
+        if (elementNames != null && name != null) {
+            int index = elementNames.indexOf(name);
+            if (index >= 0) {
+                return index;
+            }
+        }
+        int next = Math.max(this.currentInAtt, 0);
+        if (elementNames != null) {
+            // Keep fallback slots clear of every format element slot.
+            next = Math.max(next, elementNames.size());
+        }
+        this.currentInAtt = next + 1;
+        return next;
     }
 
     /**

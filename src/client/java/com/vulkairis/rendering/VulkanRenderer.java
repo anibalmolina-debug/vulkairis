@@ -2,7 +2,7 @@ package com.vulkairis.rendering;
 
 import com.vulkairis.core.VulkairisController;
 import com.vulkairis.diagnostics.DiagnosticManager;
-import com.vulkairis.vulkan.VulkanDevice;
+import com.vulkairis.backend.vulkanmod.VulkanBackendAdapter;
 import com.vulkairis.vulkan.descriptor.VulkanDescriptorManager;
 import net.vulkanmod.vulkan.Renderer;
 import net.vulkanmod.vulkan.shader.GraphicsPipeline;
@@ -82,6 +82,6 @@ public class VulkanRenderer implements RenderBackend {
 
     @Override
     public boolean isAvailable() {
-        return VulkanDevice.isLive(VulkanDevice.getDevice()) && VulkairisController.getInstance().isVulkanActive();
+        return VulkanBackendAdapter.isLive(VulkanBackendAdapter.getDevice()) && VulkairisController.getInstance().isVulkanActive();
     }
 }

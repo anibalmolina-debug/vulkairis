@@ -1,6 +1,7 @@
 package com.vulkairis.translation;
 
-import com.vulkairis.vulkan.VulkanDevice;
+import com.vulkairis.core.ShaderLifecycleState;
+import com.vulkairis.backend.vulkanmod.VulkanBackendAdapter;
 import com.vulkairis.vulkan.pipeline.PipelineKey;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
@@ -20,6 +21,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class VulkairisProgram {
     private static final Logger LOGGER = LoggerFactory.getLogger("Vulkairis/Program");
+    private static final Logger LIFECYCLE_LOGGER = LoggerFactory.getLogger("Vulkairis/Lifecycle");
 
     private final int virtualProgramId;
     private final String name;
@@ -29,11 +31,15 @@ public class VulkairisProgram {
 
     private long pipelineLayout = 0L;
     private long descriptorSetLayout = 0L;
+    private volatile ShaderLifecycleState lifecycleState = ShaderLifecycleState.DISCOVERED;
+    /** Device generation at creation; pipelines/layouts die with the device that made them. */
+    private final long deviceGeneration;
 
     public VulkairisProgram(int virtualProgramId, String name, List<Integer> attachedShaderIds) {
         this.virtualProgramId = virtualProgramId;
         this.name = (name != null && !name.isEmpty()) ? name : "program_" + virtualProgramId;
         this.attachedShaderIds = Collections.unmodifiableList(new ArrayList<>(attachedShaderIds));
+        this.deviceGeneration = VulkanBackendAdapter.currentGeneration();
         resolveAttachedShaders();
     }
 
@@ -44,6 +50,17 @@ public class VulkairisProgram {
             if (shader != null) {
                 attachedShaders.add(shader);
             }
+        }
+
+        boolean allReflected = !attachedShaders.isEmpty();
+        for (VulkairisShader shader : attachedShaders) {
+            if (!shader.getLifecycleState().isAtLeast(ShaderLifecycleState.REFLECTED)) {
+                allReflected = false;
+                break;
+            }
+        }
+        if (allReflected) {
+            advanceLifecycle(ShaderLifecycleState.REFLECTED);
         }
     }
 
@@ -63,12 +80,52 @@ public class VulkairisProgram {
         return name;
     }
 
+    /**
+     * Returns the current lifecycle state of this program. Never {@code null}.
+     */
+    public ShaderLifecycleState getLifecycleState() {
+        return lifecycleState;
+    }
+
+    /**
+     * Advances this program along its execution lifecycle. Only forward moves are honoured;
+     * attempts to move backwards (or repeat the current state) are ignored. Transitions are logged
+     * at INFO on the {@code Vulkairis/Lifecycle} logger.
+     *
+     * @param next the target state; {@code null} is ignored
+     */
+    public synchronized void advanceLifecycle(ShaderLifecycleState next) {
+        if (next == null) return;
+
+        ShaderLifecycleState prev = lifecycleState;
+        if (prev == next || !prev.canTransitionTo(next)) {
+            return;
+        }
+
+        lifecycleState = next;
+        try {
+            LIFECYCLE_LOGGER.info("[Vulkairis] Program '{}' {} -> {}", name, prev, next);
+        } catch (Throwable ignored) {
+            // Logging must never interfere with program bookkeeping.
+        }
+    }
+
     public List<Integer> getAttachedShaderIds() {
         return attachedShaderIds;
     }
 
     public List<Integer> attachedShaderIds() {
         return attachedShaderIds;
+    }
+
+    /** @return the device generation that created this program's pipelines/layouts */
+    public long getDeviceGeneration() {
+        return deviceGeneration;
+    }
+
+    /** @return whether the device was recreated since this program was created */
+    public boolean isStale() {
+        return VulkanBackendAdapter.isStaleGeneration(deviceGeneration);
     }
 
     public List<VulkairisShader> getAttachedShaders() {
@@ -123,7 +180,7 @@ public class VulkairisProgram {
 
     public synchronized long getOrCreatePipelineLayout(VkDevice device, long descriptorSetLayout) {
         if (this.pipelineLayout != 0L) return this.pipelineLayout;
-        if (!VulkanDevice.isLive(device)) return 0L;
+        if (!VulkanBackendAdapter.isLive(device)) return 0L;
 
         this.descriptorSetLayout = descriptorSetLayout;
 
@@ -145,12 +202,16 @@ public class VulkairisProgram {
             this.pipelineLayout = pLayout.get(0);
             LOGGER.info("[Vulkairis] Created VkPipelineLayout 0x{} for program '{}'",
                     Long.toHexString(this.pipelineLayout), name);
+            advanceLifecycle(ShaderLifecycleState.PIPELINE_CREATED);
             return this.pipelineLayout;
         }
     }
 
     public void cachePipeline(PipelineKey key, long pipeline) {
         pipelines.put(key, pipeline);
+        if (pipeline != 0L) {
+            advanceLifecycle(ShaderLifecycleState.PIPELINE_CREATED);
+        }
     }
 
     public Long getCachedPipeline(PipelineKey key) {
@@ -158,7 +219,8 @@ public class VulkairisProgram {
     }
 
     public synchronized void destroy(VkDevice device) {
-        if (VulkanDevice.isLive(device)) {
+        com.vulkairis.bridge.VulkanModProgramBridge.unlink(virtualProgramId);
+        if (VulkanBackendAdapter.isLive(device)) {
             for (Map.Entry<PipelineKey, Long> entry : pipelines.entrySet()) {
                 long pipe = entry.getValue();
                 if (pipe != 0L) {
@@ -183,6 +245,6 @@ public class VulkairisProgram {
     }
 
     public synchronized void destroy() {
-        destroy(VulkanDevice.getDevice());
+        destroy(VulkanBackendAdapter.getDevice());
     }
 }

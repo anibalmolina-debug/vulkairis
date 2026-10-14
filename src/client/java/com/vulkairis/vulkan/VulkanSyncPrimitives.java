@@ -14,8 +14,9 @@ public class VulkanSyncPrimitives {
     private static final Logger LOGGER = LoggerFactory.getLogger("Vulkairis/Sync");
 
     public static long createFence(boolean signaled) {
-        VkDevice device = VulkanDevice.getDevice();
-        if (!VulkanDevice.isLive(device)) return 0L;
+        VkDevice device = com.vulkairis.backend.vulkanmod.VulkanBackendAdapter.getDevice();
+        if (!com.vulkairis.backend.vulkanmod.VulkanBackendAdapter.isLive(device)) return 0L;
+
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkFenceCreateInfo createInfo = VkFenceCreateInfo.calloc(stack)
@@ -33,8 +34,8 @@ public class VulkanSyncPrimitives {
     }
 
     public static void waitForFence(long fence, long timeoutNs) {
-        VkDevice device = VulkanDevice.getDevice();
-        if (!VulkanDevice.isLive(device) || fence == 0L) return;
+        VkDevice device = com.vulkairis.backend.vulkanmod.VulkanBackendAdapter.getDevice();
+        if (!com.vulkairis.backend.vulkanmod.VulkanBackendAdapter.isLive(device) || fence == 0L) return;
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
             LongBuffer pFence = stack.longs(fence);
@@ -43,8 +44,8 @@ public class VulkanSyncPrimitives {
     }
 
     public static void resetFence(long fence) {
-        VkDevice device = VulkanDevice.getDevice();
-        if (!VulkanDevice.isLive(device) || fence == 0L) return;
+        VkDevice device = com.vulkairis.backend.vulkanmod.VulkanBackendAdapter.getDevice();
+        if (!com.vulkairis.backend.vulkanmod.VulkanBackendAdapter.isLive(device) || fence == 0L) return;
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
             LongBuffer pFence = stack.longs(fence);
@@ -53,15 +54,15 @@ public class VulkanSyncPrimitives {
     }
 
     public static void destroyFence(long fence) {
-        VkDevice device = VulkanDevice.getDevice();
-        if (VulkanDevice.isLive(device) && fence != 0L) {
+        VkDevice device = com.vulkairis.backend.vulkanmod.VulkanBackendAdapter.getDevice();
+        if (com.vulkairis.backend.vulkanmod.VulkanBackendAdapter.isLive(device) && fence != 0L) {
             VK10.vkDestroyFence(device, fence, null);
         }
     }
 
     public static long createSemaphore() {
-        VkDevice device = VulkanDevice.getDevice();
-        if (!VulkanDevice.isLive(device)) return 0L;
+        VkDevice device = com.vulkairis.backend.vulkanmod.VulkanBackendAdapter.getDevice();
+        if (!com.vulkairis.backend.vulkanmod.VulkanBackendAdapter.isLive(device)) return 0L;
 
         try (MemoryStack stack = MemoryStack.stackPush()) {
             VkSemaphoreCreateInfo createInfo = VkSemaphoreCreateInfo.calloc(stack)
@@ -78,8 +79,8 @@ public class VulkanSyncPrimitives {
     }
 
     public static void destroySemaphore(long semaphore) {
-        VkDevice device = VulkanDevice.getDevice();
-        if (VulkanDevice.isLive(device) && semaphore != 0L) {
+        VkDevice device = com.vulkairis.backend.vulkanmod.VulkanBackendAdapter.getDevice();
+        if (com.vulkairis.backend.vulkanmod.VulkanBackendAdapter.isLive(device) && semaphore != 0L) {
             VK10.vkDestroySemaphore(device, semaphore, null);
         }
     }

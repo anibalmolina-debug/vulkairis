@@ -11,6 +11,12 @@ repositories {
 	mavenCentral()
 }
 
+configurations.all {
+		resolutionStrategy {
+			force("org.spongepowered:mixin:0.8.5")
+		}
+}
+
 loom {
 	splitEnvironmentSourceSets()
 
@@ -39,25 +45,37 @@ dependencies {
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation("net.fabricmc.fabric-api:fabric-api:${providers.gradleProperty("fabric_api_version").get()}")
 
-	// Iris & VulkanMod & Sodium dev dependencies
-	modImplementation(files("LIBS/iris-fabric-${providers.gradleProperty("iris").get()}.jar"))
-	modImplementation(files("LIBS/VulkanMod-${providers.gradleProperty("vulkanmod").get()}.jar"))
-	modCompileOnly(files("LIBS/sodium-fabric-0.8.12-beta.1+mc1.21.1.jar"))
-	implementation(files("LIBS/sodium-api.jar"))
+	// Iris & VulkanMod & Sodium dev dependencies.
+	// Iris hard-depends on sodium 0.8.x and touches sodium API classes at runtime
+	// (e.g. VertexSerializer in SystemReport mixin), so sodium-api must be on the
+	// dev classpath even though the real sodium renderer is NOT loaded (Vulkairis
+	// declares "provides sodium" + VulkanMod replaces rendering).
+	modImplementation(":iris-fabric-1.8.14-beta.1+mc1.21.1")
+	modImplementation(":VulkanMod-0.6.7+1.21.1")
+	modCompileOnly(":sodium-fabric-0.8.12-beta.1+mc1.21.1")
+	implementation(":sodium-api")
+	// ModMenu for the Config button (Mods -> Vulkairis -> config). No Cloth Config:
+	// settings UI is vanilla (VulkairisConfigScreen) per GUI plan.
+	modImplementation(":modmenu-11.0.4")
 
-	// in-process GLSL -> SPIR-V via Shaderc
+	// Iris bundled nested jar-in-jar dependencies needed on the Loom dev classpath.
+	// Without them, shader parsing/transformation throws NoClassDefFoundError.
+	implementation(":jcpp-1.4.14")
+	implementation(":glsl-transformer-3.0.0-pre3")
+	implementation(":antlr4-runtime-4.13.1")
+
+	// in-process GLSL -> SPIR-V via Shaderc.
+	// Only the Windows natives are on the runtime classpath: the extra Linux/macOS
+	// natives make the dev classpath long enough that Gradle replaces it with a
+	// "pathing jar", which breaks Fabric's dev launcher (see gradlew.bat comment).
 	implementation("org.lwjgl:lwjgl-shaderc:$lwjglVersion")
 	runtimeOnly("org.lwjgl:lwjgl-shaderc:$lwjglVersion:natives-windows")
-	runtimeOnly("org.lwjgl:lwjgl-shaderc:$lwjglVersion:natives-linux")
-	runtimeOnly("org.lwjgl:lwjgl-shaderc:$lwjglVersion:natives-macos")
 
 	// Vulkan LWJGL bindings & VMA
 	implementation("org.lwjgl:lwjgl-vulkan:$lwjglVersion")
 
 	implementation("org.lwjgl:lwjgl-vma:$lwjglVersion")
 	runtimeOnly("org.lwjgl:lwjgl-vma:$lwjglVersion:natives-windows")
-	runtimeOnly("org.lwjgl:lwjgl-vma:$lwjglVersion:natives-linux")
-	runtimeOnly("org.lwjgl:lwjgl-vma:$lwjglVersion:natives-macos")
 
 	testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -65,7 +83,11 @@ dependencies {
 
 tasks.test {
 	useJUnitPlatform()
-	// enabled = false
+	// The Gradle JUnit test worker cannot start in this environment: the Gradle cache lives
+	// under a non-ASCII user profile path, so the worker JVM fails to load GradleWorkerMain.
+	// The standalone `runTestRunner` task below avoids the Gradle test worker entirely and is
+	// wired into `check`, so `gradlew build` still runs the prototype test suite.
+	enabled = false
 }
 
 tasks.register<JavaExec>("runTestRunner") {
@@ -73,6 +95,12 @@ tasks.register<JavaExec>("runTestRunner") {
 	description = "Runs the Vulkairis prototype test suite"
 	classpath = sourceSets.test.get().runtimeClasspath + sourceSets.getByName("client").runtimeClasspath
 	mainClass.set("com.vulkairis.test.VulkairisTestRunner")
+	// Opt in to parallel execution so the JUnit platform does not warn on every run.
+	systemProperty("junit.jupiter.execution.parallel.enabled", "true")
+}
+
+tasks.named("check") {
+	dependsOn("runTestRunner")
 }
 
 tasks.matching { it.name == "downloadAssets" }.configureEach {
@@ -97,7 +125,7 @@ java {
 	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
 	// if it is present.
 	// If you remove this line, sources will not be generated.
-	withSourcesJar()
+	// withSourcesJar()
 
 	sourceCompatibility = JavaVersion.VERSION_21
 	targetCompatibility = JavaVersion.VERSION_21
@@ -120,7 +148,7 @@ publishing {
 		}
 	}
 
-	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
+	// See https://docs.gradle.org/current/userguide/publishing_maven.html for more information on how to set up publishing.
 	repositories {
 		// Add repositories to publish to here.
 		// Notice: This block does NOT have the same function as the block in the top level.

@@ -12,6 +12,7 @@
 		"iris.GLDebugMixin",
 		"iris.GlResourceMixin",
 		"iris.GlShaderMixin",
+		"iris.HandPassDebugMixin",
 		"iris.IrisRenderSystemMixin",
 		"iris.PBRTextureManagerMixin",
 		"iris.PipelineManagerMixin",
@@ -24,7 +25,9 @@
 		"iris.ShaderWorkaroundsMixin",
 		"iris.SmoothedFloatMixin",
 		"iris.SodiumProgramsMixin",
+		"iris.SodiumTerrainDoorMixin",
 		"iris.StandardMacrosMixin",
+		"iris.TransformPatcherMixin",
 		"render.GlStateManagerMixin",
 		"render.RenderTargetExtMixin",
 		"render.RendererMixin",
@@ -32,6 +35,7 @@
 		"vulkan.AttributeAccessor",
 		"vulkan.GLSLParserMixin",
 		"vulkan.GlUtilMixin",
+		"vulkan.GraphicsPipelineMixin",
 		"vulkan.VkGlTextureMixin"
 	],
 	"injectors": {

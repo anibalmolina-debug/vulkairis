@@ -1,6 +1,6 @@
 package com.vulkairis.translation;
 
-import com.vulkairis.vulkan.VulkanDevice;
+import com.vulkairis.backend.vulkanmod.VulkanBackendAdapter;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.vulkan.VK10;
 import org.lwjgl.vulkan.VkDevice;
@@ -25,7 +25,7 @@ public class ShaderModuleFactory {
             throw new IllegalArgumentException("Cannot create VkShaderModule: SPIR-V buffer is null or empty");
         }
 
-        if (!VulkanDevice.isLive(device)) {
+        if (!VulkanBackendAdapter.isLive(device)) {
             LOGGER.warn("[Vulkairis] Cannot create VkShaderModule: VkDevice is not live");
             return 0L;
         }
@@ -42,6 +42,9 @@ public class ShaderModuleFactory {
             }
 
             long handle = pModule.get(0);
+            // Lifecycle: this factory does not receive the owning VulkairisShader, so it cannot
+            // advance MODULE_CREATED itself. The registry's VulkairisShader constructor derives
+            // MODULE_CREATED from this non-zero handle.
             LOGGER.info("[Vulkairis] Created VkShaderModule handle 0x{}", Long.toHexString(handle));
             return handle;
         }
@@ -51,14 +54,14 @@ public class ShaderModuleFactory {
      * Convenience method using the active logical device.
      */
     public static long createShaderModule(ByteBuffer spirv) {
-        return createShaderModule(VulkanDevice.getDevice(), spirv);
+        return createShaderModule(VulkanBackendAdapter.getDevice(), spirv);
     }
 
     /**
      * Safely destroys a VkShaderModule handle.
      */
     public static void destroyShaderModule(VkDevice device, long shaderModule) {
-        if (shaderModule != 0L && VulkanDevice.isLive(device)) {
+        if (shaderModule != 0L && VulkanBackendAdapter.isLive(device)) {
             try {
                 VK10.vkDestroyShaderModule(device, shaderModule, null);
                 LOGGER.info("[Vulkairis] Destroyed VkShaderModule 0x{}", Long.toHexString(shaderModule));

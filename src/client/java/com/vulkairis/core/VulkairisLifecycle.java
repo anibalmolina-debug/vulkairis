@@ -3,7 +3,7 @@ package com.vulkairis.core;
 import com.vulkairis.client.render.BridgeTestRenderer;
 import com.vulkairis.diagnostics.DiagnosticManager;
 import com.vulkairis.translation.VulkanShaderRegistry;
-import com.vulkairis.vulkan.VulkanDevice;
+import com.vulkairis.backend.vulkanmod.VulkanBackendAdapter;
 import com.vulkairis.vulkan.descriptor.VulkanDescriptorManager;
 import com.vulkairis.vulkan.pipeline.PipelineManager;
 import com.vulkairis.vulkan.test.StandaloneVulkanTest;
@@ -28,11 +28,22 @@ public class VulkairisLifecycle {
 
     public static void onWindowResize(int width, int height) {
         LOGGER.debug("[Vulkairis] Lifecycle: window resized to {}x{}", width, height);
+        // Phase 6: render passes may be recreated under the new swapchain; drop cached raw
+        // pipelines so the next controlled draw rebuilds against the live pass. (The render
+        // thread call site for this hook lands with the resize/target routing work.)
+        try {
+            StandaloneVulkanTest.invalidatePipelines();
+        } catch (Throwable ignored) {
+        }
     }
 
     public static void onShaderPackReload() {
         LOGGER.info("[Vulkairis] Lifecycle: onShaderPackReload");
         DiagnosticManager.log(DiagnosticManager.Category.SHADER, "Shader pack reload initiated");
+        try {
+            StandaloneVulkanTest.invalidatePipelines();
+        } catch (Throwable ignored) {
+        }
     }
 
     public static void onWorldUnload() {
@@ -43,7 +54,7 @@ public class VulkairisLifecycle {
         LOGGER.info("[Vulkairis] Lifecycle: onShutdown initiated — releasing Vulkan resources in reverse dependency order");
         try {
             // 1. Wait for GPU idle
-            VulkanDevice.waitIdle();
+            VulkanBackendAdapter.waitIdle();
 
             // 2. Clean up test pipelines
             BridgeTestRenderer.cleanUp();
@@ -59,7 +70,7 @@ public class VulkairisLifecycle {
             VulkanShaderRegistry.cleanUp();
 
             // 6. Destroy owned device-level pools
-            VulkanDevice.destroy();
+            VulkanBackendAdapter.destroy();
 
             // 7. Transition state
             VulkairisController.getInstance().setState(BackendState.SHUTDOWN);

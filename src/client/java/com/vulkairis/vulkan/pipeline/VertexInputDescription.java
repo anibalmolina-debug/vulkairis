@@ -69,15 +69,40 @@ public class VertexInputDescription {
                 case 4 -> VK10.VK_FORMAT_R32G32B32A32_SFLOAT;
                 default -> VK10.VK_FORMAT_R32G32B32_SFLOAT;
             };
-            case UBYTE -> VK10.VK_FORMAT_R8G8B8A8_UNORM;
-            case BYTE -> VK10.VK_FORMAT_R8G8B8A8_SNORM;
+            // Unsigned/signed normalized 8-bit data. The component count must be
+            // honored: Mojang only ever emits 4 for COLOR, but generic elements
+            // may use fewer components, and mapping them to RGBA would misread
+            // the following vertex attributes.
+            case UBYTE -> switch (count) {
+                case 1 -> VK10.VK_FORMAT_R8_UNORM;
+                case 2 -> VK10.VK_FORMAT_R8G8_UNORM;
+                case 3 -> VK10.VK_FORMAT_R8G8B8_UNORM;
+                case 4 -> VK10.VK_FORMAT_R8G8B8A8_UNORM;
+                default -> VK10.VK_FORMAT_R8G8B8A8_UNORM;
+            };
+            case BYTE -> switch (count) {
+                case 1 -> VK10.VK_FORMAT_R8_SNORM;
+                case 2 -> VK10.VK_FORMAT_R8G8_SNORM;
+                case 3 -> VK10.VK_FORMAT_R8G8B8_SNORM;
+                case 4 -> VK10.VK_FORMAT_R8G8B8A8_SNORM;
+                default -> VK10.VK_FORMAT_R8G8B8A8_SNORM;
+            };
+            // Minecraft stores the overlay (UV1) and lightmap (UV2) as signed shorts.
+            // Shaders consume them as integer vectors (ivec2 UV1, ivec2 UV2).
+            // They MUST be mapped to SINT formats; mapping them to SNORM float formats
+            // causes the vertex fetch unit to produce floating-point values that
+            // truncate to 0 in ivec2 attributes, breaking text and lightmap sampling.
             case SHORT -> switch (count) {
+                case 1 -> VK10.VK_FORMAT_R16_SINT;
                 case 2 -> VK10.VK_FORMAT_R16G16_SINT;
+                case 3 -> VK10.VK_FORMAT_R16G16B16_SINT;
                 case 4 -> VK10.VK_FORMAT_R16G16B16A16_SINT;
                 default -> VK10.VK_FORMAT_R16G16_SINT;
             };
             case USHORT -> switch (count) {
+                case 1 -> VK10.VK_FORMAT_R16_UINT;
                 case 2 -> VK10.VK_FORMAT_R16G16_UINT;
+                case 3 -> VK10.VK_FORMAT_R16G16B16_UINT;
                 case 4 -> VK10.VK_FORMAT_R16G16B16A16_UINT;
                 default -> VK10.VK_FORMAT_R16G16_UINT;
             };

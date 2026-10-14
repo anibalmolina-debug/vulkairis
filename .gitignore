@@ -38,3 +38,16 @@ hs_err_*.log
 replay_*.log
 *.hprof
 *.jfr
+*.class
+
+# Vulkairis local references and logs
+LIBS/Vitrail/
+*.log
+*.log.gz
+build-*.log
+runclient*.log
+test-output.*
+run_output*.txt
+gradle-ascii/
+.opencode/
+

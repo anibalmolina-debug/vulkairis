@@ -2,6 +2,7 @@ package com.vulkairis.rendering;
 
 import com.vulkairis.vulkan.pipeline.PipelineKey;
 import com.vulkairis.vulkan.pipeline.PipelineManager;
+import com.vulkairis.vulkan.pipeline.VulkanPipelineFactory;
 
 /**
  * Tracks OpenGL / Blaze3D rasterization, blend, depth, and scissor states
@@ -42,14 +43,32 @@ public class RenderStateTracker {
     }
 
     public PipelineKey createPipelineKey(long vertModule, long fragModule, String formatName) {
+        boolean blend = blendEnabled;
         return new PipelineKey(
                 vertModule,
                 fragModule,
                 formatName,
-                blendEnabled ? blendModeOrdinal : -1,
+                // Render pass is resolved by the renderer when it selects a pass;
+                // 0 means "unspecified" for state-only keys.
+                0L,
+                VulkanPipelineFactory.DEFAULT_TOPOLOGY,
                 depthTest,
                 depthMask,
-                cull
+                VulkanPipelineFactory.DEFAULT_DEPTH_COMPARE_OP,
+                VulkanPipelineFactory.DEFAULT_FRONT_FACE,
+                cull ? VulkanPipelineFactory.BACK_FACE_CULL_MODE : VulkanPipelineFactory.NO_CULL_MODE,
+                blend ? blendModeOrdinal : -1,
+                blend ? VulkanPipelineFactory.TRANSLUCENT_SRC_COLOR_FACTOR : 0,
+                blend ? VulkanPipelineFactory.TRANSLUCENT_DST_COLOR_FACTOR : 0,
+                blend ? VulkanPipelineFactory.TRANSLUCENT_COLOR_BLEND_OP : 0,
+                blend ? VulkanPipelineFactory.TRANSLUCENT_SRC_ALPHA_FACTOR : 0,
+                blend ? VulkanPipelineFactory.TRANSLUCENT_DST_ALPHA_FACTOR : 0,
+                blend ? VulkanPipelineFactory.TRANSLUCENT_ALPHA_BLEND_OP : 0,
+                VulkanPipelineFactory.DEFAULT_COLOR_WRITE_MASK,
+                VulkanPipelineFactory.DEFAULT_SAMPLE_COUNT,
+                0L,
+                "",
+                (depthTest ? 1 : 0) | (depthMask ? 2 : 0) | (cull ? 4 : 0) | (blend ? 8 : 0)
         );
     }
 

@@ -2,12 +2,14 @@ package com.vulkairis.client.render;
 
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import com.vulkairis.core.RenderMatrices;
 import com.vulkairis.translation.SpirvCompiler;
 import com.vulkairis.translation.VulkairisShader;
-import com.vulkairis.vulkan.VulkanDevice;
+import com.vulkairis.backend.vulkanmod.VulkanBackendAdapter;
 import com.vulkairis.vulkan.descriptor.VulkanDescriptorManager;
 import com.vulkairis.vulkan.pipeline.PipelineManager;
 import com.vulkairis.vulkan.pipeline.VulkanPipelineFactory;
+import com.vulkairis.vulkan.test.StandaloneVulkanTest;
 import net.irisshaders.iris.gl.shader.ShaderType;
 import net.vulkanmod.vulkan.Renderer;
 import net.vulkanmod.vulkan.framebuffer.Framebuffer;
@@ -28,19 +30,25 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Validates end-to-end rendering by creating native Vulkan VkPipeline objects
  * directly from Vulkairis VkShaderModule handles without raw GLSL re-feed.
+ *
+ * @deprecated Dead experimental path that is never dispatched from the render loop; superseded by
+ * {@link StandaloneVulkanTest}. Retained only because {@code VulkairisLifecycle} still calls
+ * {@link #cleanUp()}. Its draw path is now gated by
+ * {@link StandaloneVulkanTest#isWorldPassActive(net.vulkanmod.vulkan.Renderer)} so that if it is
+ * ever re-wired it cannot leak test geometry onto the menu. Use the controlled renderer instead.
  */
+@Deprecated
 public class BridgeTestRenderer {
     private static final Logger LOGGER = LogManager.getLogger("Vulkairis/TestRenderer");
 
     /**
-     * OpenGL clip space Z: [-1, 1] -> Vulkan clip space Z: [0, 1] correction matrix.
+     * OpenGL clip space Z: [-1, 1] -&gt; Vulkan clip space Z: [0, 1] correction matrix.
+     *
+     * <p>Alias of {@link RenderMatrices#CLIP_SPACE_CORRECTION}, the single authoritative
+     * correction. Y is intentionally not flipped here because {@code SpirvCompiler} already emits
+     * {@code set_invert_y(true)}.</p>
      */
-    public static final Matrix4f VULKAN_DEPTH_CORRECTION = new Matrix4f(
-            1.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 0.5f, 0.5f,
-            0.0f, 0.0f, 0.0f, 1.0f
-    );
+    public static final Matrix4f VULKAN_DEPTH_CORRECTION = RenderMatrices.CLIP_SPACE_CORRECTION;
 
     private static final String TEST_VERT_GLSL = """
             #version 450 core
@@ -74,8 +82,8 @@ public class BridgeTestRenderer {
     public static synchronized void initTestShaders() {
         if (initialized) return;
 
-        VkDevice device = VulkanDevice.getDevice();
-        if (!VulkanDevice.isLive(device)) {
+        VkDevice device = VulkanBackendAdapter.getDevice();
+        if (!VulkanBackendAdapter.isLive(device)) {
             LOGGER.warn("[Vulkairis] Vulkan device not ready yet for test pipeline initialization.");
             return;
         }
@@ -136,7 +144,7 @@ public class BridgeTestRenderer {
 
     private static long getOrCreatePipelineForPass(long renderPassId) {
         return PIPELINES_BY_RENDER_PASS.computeIfAbsent(renderPassId, passId -> {
-            VkDevice device = VulkanDevice.getDevice();
+            VkDevice device = VulkanBackendAdapter.getDevice();
             VulkanPipelineFactory.PipelineParams params = new VulkanPipelineFactory.PipelineParams(
                     vertShader.getVkShaderModule(),
                     fragShader.getVkShaderModule(),
@@ -159,7 +167,11 @@ public class BridgeTestRenderer {
     /**
      * Issues a test quad draw call directly using native Vulkan VkPipeline
      * compiled from Vulkairis VkShaderModule handles.
+     *
+     * @deprecated Dead path, superseded by {@link StandaloneVulkanTest}. Gated by the world-only
+     * policy so it can never draw over the menu even if re-wired.
      */
+    @Deprecated
     public static void renderTestQuad() {
         if (!initialized) {
             initTestShaders();
@@ -170,6 +182,9 @@ public class BridgeTestRenderer {
             Renderer renderer = Renderer.getInstance();
             VkCommandBuffer cmdBuffer = Renderer.getCommandBuffer();
             if (renderer == null || cmdBuffer == null) return;
+
+            // Shared world-only gate: no menu/GUI frames, no non-main targets.
+            if (!StandaloneVulkanTest.isWorldPassActive(renderer)) return;
 
             RenderPass boundPass = renderer.getBoundRenderPass();
             if (boundPass == null || boundPass.getId() == 0L) return;
@@ -240,13 +255,13 @@ public class BridgeTestRenderer {
     }
 
     public static synchronized void cleanUp() {
-        VkDevice device = VulkanDevice.getDevice();
+        VkDevice device = VulkanBackendAdapter.getDevice();
         for (long pipe : PIPELINES_BY_RENDER_PASS.values()) {
             VulkanPipelineFactory.destroyPipeline(device, pipe);
         }
         PIPELINES_BY_RENDER_PASS.clear();
 
-        if (testPipelineLayout != 0L && VulkanDevice.isLive(device)) {
+        if (testPipelineLayout != 0L && VulkanBackendAdapter.isLive(device)) {
             try {
                 VK10.vkDestroyPipelineLayout(device, testPipelineLayout, null);
             } catch (Throwable ignored) {
