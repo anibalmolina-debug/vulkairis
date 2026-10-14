@@ -1213,7 +1213,7 @@ public class VulkairisTestRunner {
 
         // 56. Phase 4: unified GLSL translation and compilation coordinator
         try {
-            System.out.println("\n[56/56] Running UnifiedTranslationServiceTest...");
+            System.out.println("\n[56/57] Running UnifiedTranslationServiceTest...");
             UnifiedTranslationServiceTest unifiedTest = new UnifiedTranslationServiceTest();
             unifiedTest.setUp();
             unifiedTest.testBufferRawSourceAndRetrieve();
@@ -1233,6 +1233,95 @@ public class VulkairisTestRunner {
             passed++;
         } catch (Throwable t) {
             System.err.println(">>> FAIL: UnifiedTranslationServiceTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        // 57. Phase 5: typed target, sampler and uniform plans
+        try {
+            System.out.println("\n[57/60] Running TypedPlansAndDescriptorsTest...");
+            TypedPlansAndDescriptorsTest plansTest = new TypedPlansAndDescriptorsTest();
+            plansTest.setUp();
+            plansTest.testSamplerPlanTotalBindingAndRejection();
+            plansTest.setUp();
+            plansTest.testTargetPlanAndPingPongSchedule();
+            plansTest.setUp();
+            plansTest.testUniformPlanStd140Layout();
+            plansTest.setUp();
+            plansTest.testUniformBlockPackerWritesValidStd140Buffer();
+            plansTest.setUp();
+            plansTest.testVulkanDescriptorManagerPassValidation();
+            System.out.println(">>> PASS: TypedPlansAndDescriptorsTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: TypedPlansAndDescriptorsTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        // 58. Phase D: Terrain door (mesh contract, compile/render decisions, targets, shadow, uniforms)
+        try {
+            System.out.println("\n[58/60] Running PhaseDTerrainDoorTest...");
+            PhaseDTerrainDoorTest doorTest = new PhaseDTerrainDoorTest();
+            doorTest.testVertexContractLayout();
+            doorTest.testVertexContractSettlesOnce();
+            doorTest.testDoorPassMapping();
+            doorTest.testDoorCompileNeedsLinkedPipeline();
+            doorTest.testDoorDescriptorSwapValidation();
+            doorTest.testFallbackReasonNamesEverything();
+            doorTest.testBridgeTerrainRegistrationIsHonestHeadless();
+            doorTest.testDescriptorSwapDecisions();
+            doorTest.testPackTargetsCreateAndValidate();
+            doorTest.testPackTargetsResizeAndMip();
+            doorTest.testPackTargetsDimensionMismatchReported();
+            doorTest.testPackTargetFramebufferValidation();
+            doorTest.testShadowFrameLagIsOneFrameLate();
+            doorTest.testShadowCulling();
+            doorTest.testCustomExpressionEvaluator();
+            doorTest.testSnapshotOnceThenPerPassWrite();
+            doorTest.testPassWriteReportsShortAndMissing();
+            doorTest.testUniformValueKindsPublish();
+            System.out.println(">>> PASS: PhaseDTerrainDoorTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: PhaseDTerrainDoorTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        // 59. Phase E: Frame orchestration and fallback honesty
+        try {
+            System.out.println("\n[59/60] Running PhaseEChainFallbackTest...");
+            PhaseEChainFallbackTest chainTest = new PhaseEChainFallbackTest();
+            chainTest.testPlanReplayDeterministic();
+            chainTest.testSubstituteFinalLabeling();
+            chainTest.testFallbackReasonPropagationToStatus();
+            System.out.println(">>> PASS: PhaseEChainFallbackTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: PhaseEChainFallbackTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        // 60. Phase F: GUI close-out
+        try {
+            System.out.println("\n[60/60] Running PhaseFGuiCloseoutTest...");
+            PhaseFGuiCloseoutTest guiTest = new PhaseFGuiCloseoutTest();
+            guiTest.testToggleColorAndLabelChangeTogether();
+            guiTest.testEveryToggleRowHasTooltipAndRoundTrips();
+            guiTest.testScanStateMatrix();
+            guiTest.testAsyncScanInstallsOnModel();
+            guiTest.testRescanReconcilesAddRemoveReplaceDuplicateCorrupt();
+            guiTest.testModsFolderAndJarsNeverBecomePacks();
+            guiTest.testSanitizeRedactsUsernamesAndProfiles();
+            guiTest.testReportBoundsAndExportRoundTrip();
+            guiTest.testAdvancedCloseoutGates();
+            guiTest.testModMenuAndCompatibilityWiringIntact();
+            System.out.println(">>> PASS: PhaseFGuiCloseoutTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: PhaseFGuiCloseoutTest: " + t.getMessage());
             t.printStackTrace();
             failed++;
         }

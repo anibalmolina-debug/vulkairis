@@ -43,7 +43,18 @@ public final class PackRenderPipeline {
                 return null;
             }
             long layout = gp.getLayout();
-            return PassBinding.graphics(programName, 0L, layout, 0L, w, h, 4);
+            long descSet = 0L;
+            var vertShader = program.getVertexShader();
+            var refl = vertShader != null ? vertShader.getReflection() : null;
+            long gen = com.vulkairis.iris.SourceProvenance.currentGeneration();
+            var targetPlan = com.vulkairis.plan.TargetPlan.buildStandard(w, h, 1024, t, gen);
+            var samplerPlan = com.vulkairis.plan.SamplerPlan.build(programName, refl != null ? refl.getSamplers() : null, targetPlan, gen);
+            var uniformPlan = com.vulkairis.plan.UniformPlan.build(programName, refl != null && !refl.getUniformBlocks().isEmpty() ? refl.getUniformBlocks().get(0) : null, gen);
+            var report = com.vulkairis.plan.VulkanDescriptorManager.preparePassDescriptors(programName, refl, samplerPlan, uniformPlan, targetPlan, gen);
+            if (report != null && report.valid()) {
+                descSet = report.descriptorSetHandle();
+            }
+            return PassBinding.graphics(programName, 0L, layout, descSet, w, h, 4);
         } catch (Throwable ex) {
             LOGGER.debug("[Vulkairis/PackPipeline] Default resolver failed for {}: {}", programName, ex.getMessage());
             return null;
