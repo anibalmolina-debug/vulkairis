@@ -53,6 +53,12 @@ public abstract class SodiumTerrainDoorMixin {
                                               CallbackInfoReturnable<GlProgram<ChunkShaderInterface>> cir) {
         try {
             String irisName = pass == null ? "TERRAIN" : pass.toString();
+            com.vulkairis.rendering.backend.vulkanmod.v1211.VulkanModRenderStage stage = pass != null && pass.isTranslucent()
+                    ? com.vulkairis.rendering.backend.vulkanmod.v1211.VulkanModRenderStage.TRANSLUCENT_TERRAIN
+                    : com.vulkairis.rendering.backend.vulkanmod.v1211.VulkanModRenderStage.OPAQUE_TERRAIN;
+            com.vulkairis.rendering.backend.vulkanmod.v1211.VulkanModLifecycleAdapter.getInstance()
+                    .onStageObserved(stage, "SodiumPrograms.getProgram: " + irisName);
+
             TerrainPipelineDoor.TerrainPass doorPass =
                     TerrainPipelineDoor.forPassName(simplePassName(pass));
             String program = TerrainPipelineDoor.programNameFor(doorPass);

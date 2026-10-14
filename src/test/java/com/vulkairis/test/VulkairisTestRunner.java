@@ -1146,7 +1146,7 @@ public class VulkairisTestRunner {
 
         // 51. Phase 1: production readiness state machine and truthful pass gating
         try {
-            System.out.println("\n[51/51] Running ReadinessStateMachineTest...");
+            System.out.println("\n[51/52] Running ReadinessStateMachineTest...");
             ReadinessStateMachineTest readinessTest = new ReadinessStateMachineTest();
             readinessTest.setUp();
             readinessTest.testInitialStateIsNoPack();
@@ -1164,6 +1164,30 @@ public class VulkairisTestRunner {
             passed++;
         } catch (Throwable t) {
             System.err.println(">>> FAIL: ReadinessStateMachineTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        // 52. Phase 2: render lifecycle stage mapping, hook table, and ordering validator
+        try {
+            System.out.println("\n[52/52] Running RenderLifecycleTest...");
+            RenderLifecycleTest lifecycleTest = new RenderLifecycleTest();
+            lifecycleTest.setUp();
+            lifecycleTest.testStageOrderValuesAndIndices();
+            lifecycleTest.setUp();
+            lifecycleTest.testRenderLifecycleTableRegistration();
+            lifecycleTest.setUp();
+            lifecycleTest.testVulkanModLifecycleAdapterValidOrder();
+            lifecycleTest.setUp();
+            lifecycleTest.testVulkanModLifecycleAdapterDetectsViolation();
+            lifecycleTest.setUp();
+            lifecycleTest.testVulkanModLifecycleAdapterTraceHistoryBounds();
+            lifecycleTest.setUp();
+            lifecycleTest.testTraceOnlyModeDefault();
+            System.out.println(">>> PASS: RenderLifecycleTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: RenderLifecycleTest: " + t.getMessage());
             t.printStackTrace();
             failed++;
         }

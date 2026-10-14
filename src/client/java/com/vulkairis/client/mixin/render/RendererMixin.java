@@ -18,6 +18,8 @@ public class RendererMixin {
 
     @Inject(method = "beginFrame()V", at = @At("HEAD"), remap = false)
     private void onBeginFrame(CallbackInfo ci) {
+        com.vulkairis.rendering.backend.vulkanmod.v1211.VulkanModLifecycleAdapter.getInstance()
+                .onFrameBegin(com.vulkairis.core.VulkairisController.getInstance().getFrameCount());
         VulkanRenderer.getInstance().beginFrame();
         com.vulkairis.diagnostics.RenderHookGuard.runHook("beginFrame-coordinator",
                 com.vulkairis.diagnostics.DiagnosticManager.Phase.SCHEDULING, () -> {
@@ -46,6 +48,8 @@ public class RendererMixin {
 
     @Inject(method = "endRenderPass(Lorg/lwjgl/vulkan/VkCommandBuffer;)V", at = @At("HEAD"), remap = false)
     private void onEndRenderPass(VkCommandBuffer cmdBuffer, CallbackInfo ci) {
+        com.vulkairis.rendering.backend.vulkanmod.v1211.VulkanModLifecycleAdapter.getInstance()
+                .onStageObserved(com.vulkairis.rendering.backend.vulkanmod.v1211.VulkanModRenderStage.COMPOSITE_POST, "Renderer.endRenderPass");
         com.vulkairis.diagnostics.RenderHookGuard.runHook("endRenderPass-dispatch",
                 com.vulkairis.diagnostics.DiagnosticManager.Phase.DRAW, () -> {
                     DebugRenderMode mode = ConfigManager.getConfig().getDebugRenderMode();
@@ -69,6 +73,7 @@ public class RendererMixin {
 
     @Inject(method = "endFrame()V", at = @At("TAIL"), remap = false)
     private void onEndFrame(CallbackInfo ci) {
+        com.vulkairis.rendering.backend.vulkanmod.v1211.VulkanModLifecycleAdapter.getInstance().onFrameEnd();
         com.vulkairis.diagnostics.RenderHookGuard.runHook("endFrame-coordinator",
                 com.vulkairis.diagnostics.DiagnosticManager.Phase.PRESENT,
                 () -> com.vulkairis.rendering.exec.VulkairisFrameCoordinator.onEndFrame());

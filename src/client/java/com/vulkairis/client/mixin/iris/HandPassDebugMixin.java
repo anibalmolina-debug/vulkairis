@@ -32,6 +32,8 @@ public class HandPassDebugMixin {
 
     @Inject(method = "renderSolid", at = @At("HEAD"), require = 0, remap = false)
     private void vulkairis$onRenderSolid(CallbackInfo ci) {
+        com.vulkairis.rendering.backend.vulkanmod.v1211.VulkanModLifecycleAdapter.getInstance()
+                .onStageObserved(com.vulkairis.rendering.backend.vulkanmod.v1211.VulkanModRenderStage.FIRST_PERSON_HAND, "Iris HandRenderer.renderSolid");
         if (!vulkairis$solidLogged) {
             vulkairis$solidLogged = true;
             VULKAIRIS_LOGGER.info("[Vulkairis/HandPass] Iris HandRenderer.renderSolid fired (Iris owns the first-person hand)");
@@ -40,6 +42,8 @@ public class HandPassDebugMixin {
 
     @Inject(method = "renderTranslucent", at = @At("HEAD"), require = 0, remap = false)
     private void vulkairis$onRenderTranslucent(CallbackInfo ci) {
+        com.vulkairis.rendering.backend.vulkanmod.v1211.VulkanModLifecycleAdapter.getInstance()
+                .onStageObserved(com.vulkairis.rendering.backend.vulkanmod.v1211.VulkanModRenderStage.FIRST_PERSON_HAND, "Iris HandRenderer.renderTranslucent");
         if (!vulkairis$translucentLogged) {
             vulkairis$translucentLogged = true;
             VULKAIRIS_LOGGER.info("[Vulkairis/HandPass] Iris HandRenderer.renderTranslucent fired");
