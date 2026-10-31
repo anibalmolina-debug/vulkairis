@@ -15,9 +15,6 @@
 	"icon": "assets/vulkairis/Icon.png",
 	"environment": "client",
 	"entrypoints": {
-		"preLaunch": [
-			"com.vulkairis.client.VulkairisPreLaunch"
-		],
 		"main": [
 			"com.vulkairis.Vulkairis"
 		],

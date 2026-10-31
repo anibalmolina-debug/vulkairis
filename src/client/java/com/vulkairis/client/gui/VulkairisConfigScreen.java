@@ -174,10 +174,13 @@ public class VulkairisConfigScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // Vanilla background (blur + darkening) so the screen matches native menus.
         renderBackground(graphics, mouseX, mouseY, partialTick);
+        // Vanilla-style title: centered, shadowed.
+        graphics.drawCenteredString(font, getTitle(), this.width / 2, 12, 0xFFFFFFFF);
+        // Subtitle showing the active category, vanilla gray.
+        graphics.drawCenteredString(font, category.title(), this.width / 2, 24, 0xFFAAAAAA);
         super.render(graphics, mouseX, mouseY, partialTick);
-        graphics.drawString(font, "VULKAIRIS", MARGIN + 4, 10, 0xFFFFFFFF);
-        graphics.drawString(font, category.title(), MARGIN + RAIL_WIDTH, 10, 0xFF808080);
         if (!notice.isEmpty()) {
             graphics.drawCenteredString(font, font.plainSubstrByWidth(notice, this.width - 40),
                     this.width / 2, this.height - FOOTER - 12, 0xFFFF55);

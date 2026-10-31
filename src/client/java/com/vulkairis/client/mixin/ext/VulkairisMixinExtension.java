@@ -36,14 +36,17 @@ public class VulkairisMixinExtension implements IExtension {
             "MixinSodiumGameOptions",
             "EnumOptionBuilderImplAccessor",
             "IntegerOptionBuilderImplAccessor",
+            // Iris hand cancellation mixin: cancels vanilla hand/item rendering when shaders are on
+            // because HandRenderer.renderSolid() is not called from stripped MixinGameRenderer.
+            // Stripping MixinItemInHandRenderer lets vanilla/VulkanMod render first-person hands & held items.
+            "MixinItemInHandRenderer",
+            // Armor and entity layer mixins that fail or conflict in 1.21.1:
+            // MixinHumanoidArmorLayer throws InvalidMixinException / NPE parsing @Inject on changeId,
+            // which crashes resource reload and prevents loading to the main menu.
             "MixinHumanoidArmorLayer",
             "MixinHorseArmorLayer",
             "MixinCapeLayer",
             "MixinElytraLayer",
-            "MixinItemRenderer",
-            "MixinEntityRenderer",
-            "MixinEntityRenderDispatcher",
-            "MixinBlockEntityRenderDispatcher",
             "MixinEnderDragonRenderer"
     );
 

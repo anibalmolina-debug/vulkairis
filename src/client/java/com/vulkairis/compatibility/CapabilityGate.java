@@ -64,6 +64,12 @@ public final class CapabilityGate {
                     "pack declares no gbuffers/deferred/composite/final execution path; "
                             + "there is nothing executable to bind"));
         }
+        // DH degrade pass: distant programs are skipped entirely without the DH mod, so
+        // they are partial (never fatal) with one labeled note; graphics families are
+        // unaffected. With the mod present they flow through the normal path (Phase G).
+        if (!DistantHorizonsSupport.isAvailable() && catalog.hasDistantPrograms()) {
+            partialNotes.add(DistantHorizonsSupport.gateNote(catalog.getDistantPrograms()));
+        }
         if (!catalog.getComputePrograms().isEmpty()) {
             partialNotes.add(catalog.getComputePrograms().size()
                     + " compute program(s) discovered but never executed; "

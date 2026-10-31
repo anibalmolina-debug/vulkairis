@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "id": "vulkanmod",
+  "version": "0.6.7+1.21.1",
+  "name": "VulkanMod",
+  "description": "Bring Vulkan to Minecraft!",
+  "authors": [
+    "Collateral"
+  ],
+  "contact": {
+    "homepage": "",
+    "sources": "https://github.com/xCollateral/VulkanMod"
+  },
+  "icon": "assets/vulkanmod/Vlogo.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "net.vulkanmod.Initializer"
+    ]
+  },
+  "mixins": [
+    "vulkanmod.mixins.json"
+  ],
+  "accessWidener": "vulkanmod.accesswidener",
+  "depends": {
+    "fabricloader": "\u003e\u003d0.18.0",
+    "minecraft": [
+      "1.21",
+      "1.21.1"
+    ]
+  },
+  "custom": {
+    "fabric-renderer-api-v1:contains_renderer": true
+  },
+  "jars": [
+    {
+      "file": "META-INF/jars/fabric-api-base-0.4.42+6573ed8c19.jar"
+    },
+    {
+      "file": "META-INF/jars/fabric-block-view-api-v2-1.0.10+6573ed8c19.jar"
+    },
+    {
+      "file": "META-INF/jars/fabric-renderer-api-v1-3.4.0+c705a49c19.jar"
+    },
+    {
+      "file": "META-INF/jars/fabric-rendering-data-attachment-v1-0.3.48+73761d2e19.jar"
+    },
+    {
+      "file": "META-INF/jars/fabric-rendering-fluids-v1-3.1.6+1daea21519.jar"
+    },
+    {
+      "file": "META-INF/jars/fabric-rendering-v1-5.0.5+df16efd019.jar"
+    },
+    {
+      "file": "META-INF/jars/fabric-resource-loader-v0-1.3.1+5b5275af19.jar"
+    },
+    {
+      "file": "META-INF/jars/lwjgl-shaderc-3.3.3-natives-linux.jar"
+    },
+    {
+      "file": "META-INF/jars/lwjgl-shaderc-3.3.3-natives-macos-arm64.jar"
+    },
+    {
+      "file": "META-INF/jars/lwjgl-shaderc-3.3.3-natives-macos.jar"
+    },
+    {
+      "file": "META-INF/jars/lwjgl-shaderc-3.3.3-natives-windows.jar"
+    },
+    {
+      "file": "META-INF/jars/lwjgl-shaderc-3.3.3.jar"
+    },
+    {
+      "file": "META-INF/jars/lwjgl-vma-3.3.3-natives-linux.jar"
+    },
+    {
+      "file": "META-INF/jars/lwjgl-vma-3.3.3-natives-macos-arm64.jar"
+    },
+    {
+      "file": "META-INF/jars/lwjgl-vma-3.3.3-natives-macos.jar"
+    },
+    {
+      "file": "META-INF/jars/lwjgl-vma-3.3.3-natives-windows.jar"
+    },
+    {
+      "file": "META-INF/jars/lwjgl-vma-3.3.3.jar"
+    },
+    {
+      "file": "META-INF/jars/lwjgl-vulkan-3.3.3-natives-macos-arm64.jar"
+    },
+    {
+      "file": "META-INF/jars/lwjgl-vulkan-3.3.3-natives-macos.jar"
+    },
+    {
+      "file": "META-INF/jars/lwjgl-vulkan-3.3.3.jar"
+    }
+  ]
+}

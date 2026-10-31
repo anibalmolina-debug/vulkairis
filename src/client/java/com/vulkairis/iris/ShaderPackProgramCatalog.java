@@ -309,6 +309,32 @@ public final class ShaderPackProgramCatalog {
     }
 
     /**
+     * @return only the distant-horizons programs ({@code Dh} group or {@code dh_} name), in
+     *         execution order; empty when the pack ships none
+     */
+    public List<ShaderPackProgram> getDistantPrograms() {
+        List<ShaderPackProgram> result = new ArrayList<>();
+        for (ShaderPackProgram program : programs) {
+            if (com.vulkairis.compatibility.DistantHorizonsSupport.isDistantProgram(program)) {
+                result.add(program);
+            }
+        }
+        return Collections.unmodifiableList(result);
+    }
+
+    /**
+     * @return whether the pack ships any distant-horizons program
+     */
+    public boolean hasDistantPrograms() {
+        for (ShaderPackProgram program : programs) {
+            if (com.vulkairis.compatibility.DistantHorizonsSupport.isDistantProgram(program)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * @param group the group to test
      * @return whether at least one program was discovered in {@code group}
      */

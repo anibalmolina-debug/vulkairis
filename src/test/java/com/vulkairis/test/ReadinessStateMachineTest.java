@@ -126,6 +126,31 @@ public class ReadinessStateMachineTest {
     }
 
     @Test
+    public void testTerrainBlockNamesExactMissingCondition() {
+        // The runClient DEGRADED verdict must carry the gate's exact missing condition, not a
+        // bare "TERRAIN is CLOSED": headless nothing is linked, so the cause must name the
+        // terrain program and its zero virtual id (the honest-fallback record).
+        ShaderPackProgramCatalog catalogWithTerrain = ShaderPackProgramCatalog.of(List.of(
+                graphics("gbuffers_terrain", ProgramGroup.Gbuffers)
+        ));
+
+        stateMachine.transitionTo(PackReadinessState.DISCOVERED, catalogWithTerrain, 600L,
+                "ComplementaryReimagined_r5.9.3", "overworld", "all", false, null);
+
+        var promoTransition = stateMachine.transitionTo(PackReadinessState.EXECUTION_READY,
+                catalogWithTerrain, 600L, "ComplementaryReimagined_r5.9.3", "overworld",
+                "all", true, null);
+
+        Assertions.assertFalse(promoTransition.success());
+        Assertions.assertEquals(PackReadinessState.DEGRADED, stateMachine.getState());
+        Assertions.assertTrue(promoTransition.failureCause().contains("gbuffers_terrain"),
+                "DEGRADED cause must name the missing terrain program: "
+                        + promoTransition.failureCause());
+        Assertions.assertTrue(promoTransition.failureCause().contains("virtual id 0"),
+                "DEGRADED cause must name the missing link: " + promoTransition.failureCause());
+    }
+
+    @Test
     public void testResetReturnsToNoPack() {
         stateMachine.transitionTo(PackReadinessState.DISCOVERED, null, 500L,
                 "SomePack", "overworld", "all", false, null);

@@ -120,6 +120,12 @@ public final class ShaderWarmup {
                         || graphics.source() == null) {
                     continue;
                 }
+                // DH degrade pass: without the DH mod the distant programs can never compile,
+                // so they are not even queued (the capability-gate note is the labeled record).
+                if (!com.vulkairis.compatibility.DistantHorizonsSupport.isAvailable()
+                        && com.vulkairis.compatibility.DistantHorizonsSupport.isDistantProgram(program)) {
+                    continue;
+                }
                 graphics.source().getVertexSource().ifPresent(src -> entries.add(
                         new WarmupEntry(graphics.name() + "_vert", src,
                                 Shaderc.shaderc_glsl_vertex_shader)));

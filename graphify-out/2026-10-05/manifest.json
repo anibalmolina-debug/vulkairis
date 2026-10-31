@@ -1,0 +1,1184 @@
+{
+  ".claude/settings.local.json": {
+    "mtime": 1789651583.8718114,
+    "seen": 1791047145.1391387,
+    "ast_hash": "223fdaf9ed699e193d7f54635594acf7",
+    "semantic_hash": "223fdaf9ed699e193d7f54635594acf7"
+  },
+  ".opencode/opencode.json": {
+    "mtime": 1791047081.7848969,
+    "seen": 1791047145.1391454,
+    "ast_hash": "f2ae21510d07365eb2bce8159272c7a0",
+    "semantic_hash": "f2ae21510d07365eb2bce8159272c7a0"
+  },
+  ".opencode/plugins/graphify.js": {
+    "mtime": 1791047081.7843804,
+    "seen": 1791047145.1391482,
+    "ast_hash": "b33d000860642c6f4907a877e0387a21",
+    "semantic_hash": "b33d000860642c6f4907a877e0387a21"
+  },
+  "build.gradle.kts": {
+    "mtime": 1791216760.577184,
+    "seen": 1791216807.5717874,
+    "ast_hash": "ef62a607edffd014a9c30bf60a90547b",
+    "semantic_hash": ""
+  },
+  "gradlew": {
+    "mtime": 1787440505.855341,
+    "seen": 1791047145.1391518,
+    "ast_hash": "45bf2667b1fbec0e07e42808dc662b6b",
+    "semantic_hash": "45bf2667b1fbec0e07e42808dc662b6b"
+  },
+  "settings.gradle.kts": {
+    "mtime": 1787440505.986488,
+    "seen": 1791047145.1391535,
+    "ast_hash": "03b412eead5c6f5df565b087350a473a",
+    "semantic_hash": "03b412eead5c6f5df565b087350a473a"
+  },
+  "src/client/java/com/vulkairis/bridge/OpenGLBridge.java": {
+    "mtime": 1791046881.292096,
+    "seen": 1791047145.1391551,
+    "ast_hash": "de861dd50418df57346e5e555d0aebfb",
+    "semantic_hash": "de861dd50418df57346e5e555d0aebfb"
+  },
+  "src/client/java/com/vulkairis/bridge/TextureBridge.java": {
+    "mtime": 1788550999.2367084,
+    "seen": 1791047145.1391568,
+    "ast_hash": "19df2e88670cbd100ab1a4190327b261",
+    "semantic_hash": "19df2e88670cbd100ab1a4190327b261"
+  },
+  "src/client/java/com/vulkairis/bridge/UniformBridge.java": {
+    "mtime": 1791046862.7430995,
+    "seen": 1791047145.1391585,
+    "ast_hash": "4f6498f00afa920d829cae0fb899e60f",
+    "semantic_hash": "4f6498f00afa920d829cae0fb899e60f"
+  },
+  "src/client/java/com/vulkairis/bridge/VulkanModProgramBridge.java": {
+    "mtime": 1791217280.6738136,
+    "seen": 1791217397.6038167,
+    "ast_hash": "9bf1add4a622491a6499a288d8c28dd4",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/client/VulkairisClient.java": {
+    "mtime": 1788634734.6162562,
+    "seen": 1791047145.139161,
+    "ast_hash": "9495271088b7c3a34a5d9a85d32e6ac4",
+    "semantic_hash": "9495271088b7c3a34a5d9a85d32e6ac4"
+  },
+  "src/client/java/com/vulkairis/client/VulkairisDataGenerator.java": {
+    "mtime": 1787448042.0478811,
+    "seen": 1791047145.139163,
+    "ast_hash": "0ebf906c7b12afc27b12621cd660639b",
+    "semantic_hash": "0ebf906c7b12afc27b12621cd660639b"
+  },
+  "src/client/java/com/vulkairis/client/VulkairisPreLaunch.java": {
+    "mtime": 1788631376.6910996,
+    "seen": 1791047145.1391652,
+    "ast_hash": "db4bf4018202b6939fa7ba2c37e8ab14",
+    "semantic_hash": "db4bf4018202b6939fa7ba2c37e8ab14"
+  },
+  "src/client/java/com/vulkairis/client/iris/VulkanDepthCopyStrategy.java": {
+    "mtime": 1788631938.5175097,
+    "seen": 1791047145.1391664,
+    "ast_hash": "4d314a5fde4547863f7351a4d0e2bea3",
+    "semantic_hash": "4d314a5fde4547863f7351a4d0e2bea3"
+  },
+  "src/client/java/com/vulkairis/client/mixin/VulkairisMixinPlugin.java": {
+    "mtime": 1787506206.2468078,
+    "seen": 1791047145.1391678,
+    "ast_hash": "a1bdcfc0c7117b356f5fe390e721a48e",
+    "semantic_hash": "a1bdcfc0c7117b356f5fe390e721a48e"
+  },
+  "src/client/java/com/vulkairis/client/mixin/debug/LoadingOverlayDebugMixin.java": {
+    "mtime": 1787507836.3811898,
+    "seen": 1791047145.1391692,
+    "ast_hash": "d97bc1e683cde8f8de5f11e0e4c2a094",
+    "semantic_hash": "d97bc1e683cde8f8de5f11e0e4c2a094"
+  },
+  "src/client/java/com/vulkairis/client/mixin/debug/MinecraftScreenDebugMixin.java": {
+    "mtime": 1787507842.7167275,
+    "seen": 1791047145.139171,
+    "ast_hash": "da2ca410616c8b1df39af34bf21836b7",
+    "semantic_hash": "da2ca410616c8b1df39af34bf21836b7"
+  },
+  "src/client/java/com/vulkairis/client/mixin/ext/VulkairisMixinExtension.java": {
+    "mtime": 1788631384.727165,
+    "seen": 1791047145.1391723,
+    "ast_hash": "68e723bc61705009d420eea0b8daa27d",
+    "semantic_hash": "68e723bc61705009d420eea0b8daa27d"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/DepthCopyStrategyMixin.java": {
+    "mtime": 1788631949.5640998,
+    "seen": 1791047145.1391742,
+    "ast_hash": "15171ab207c862b9f3c882db5222c3d2",
+    "semantic_hash": "15171ab207c862b9f3c882db5222c3d2"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/ExtendedShaderMixin.java": {
+    "mtime": 1788635423.491547,
+    "seen": 1791047145.1391757,
+    "ast_hash": "a51e5ff9a0715521c89685db64217142",
+    "semantic_hash": "a51e5ff9a0715521c89685db64217142"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/GLDebugMixin.java": {
+    "mtime": 1788553887.8522503,
+    "seen": 1791047145.1391773,
+    "ast_hash": "8fb4ae42b58ca6b71fb924aabf52e8b8",
+    "semantic_hash": "8fb4ae42b58ca6b71fb924aabf52e8b8"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/GlResourceMixin.java": {
+    "mtime": 1788803235.8961194,
+    "seen": 1791047145.139179,
+    "ast_hash": "a66765d75372373e00c19d4b0ecf662b",
+    "semantic_hash": "a66765d75372373e00c19d4b0ecf662b"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/GlShaderMixin.java": {
+    "mtime": 1788633574.6360223,
+    "seen": 1791047145.1391814,
+    "ast_hash": "588268cffeb3e80c1fbbeb7055f573dc",
+    "semantic_hash": "588268cffeb3e80c1fbbeb7055f573dc"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/HandPassDebugMixin.java": {
+    "mtime": 1790969426.5467176,
+    "seen": 1791047145.1391826,
+    "ast_hash": "1bd78cc2f575be6a5a913a8109ab51d0",
+    "semantic_hash": "1bd78cc2f575be6a5a913a8109ab51d0"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/IrisRenderSystemMixin.java": {
+    "mtime": 1791214721.4146993,
+    "seen": 1791216807.5718777,
+    "ast_hash": "4d59dae1c605d9698a3c3a3872bdb828",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/PBRTextureManagerMixin.java": {
+    "mtime": 1787506673.7070441,
+    "seen": 1791047145.1391854,
+    "ast_hash": "3f63da0fbcdb95c229acdd424f12dd78",
+    "semantic_hash": "3f63da0fbcdb95c229acdd424f12dd78"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/PipelineManagerMixin.java": {
+    "mtime": 1788552955.7464066,
+    "seen": 1791047145.1391869,
+    "ast_hash": "99710141a097b58c8c529bbb6eb9e297",
+    "semantic_hash": "99710141a097b58c8c529bbb6eb9e297"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/ProgramCreatorMixin.java": {
+    "mtime": 1790947504.9916167,
+    "seen": 1791047145.1391888,
+    "ast_hash": "54bac1252681544bb5636538fde578c4",
+    "semantic_hash": "54bac1252681544bb5636538fde578c4"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/ProgramImagesBuilderMixin.java": {
+    "mtime": 1788635085.1928282,
+    "seen": 1791047145.1391904,
+    "ast_hash": "f265097373435b03b01640f3703836bf",
+    "semantic_hash": "f265097373435b03b01640f3703836bf"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/ProgramMixin.java": {
+    "mtime": 1788803249.3366923,
+    "seen": 1791047145.1391919,
+    "ast_hash": "593bb83bbeee3b11694688035c125518",
+    "semantic_hash": "593bb83bbeee3b11694688035c125518"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/ProgramUniformsBuilderMixin.java": {
+    "mtime": 1788634713.9592633,
+    "seen": 1791047145.1391935,
+    "ast_hash": "b9993d8bf754165be11d5246ce6ef8dc",
+    "semantic_hash": "b9993d8bf754165be11d5246ce6ef8dc"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/RenderBuffersMixin.java": {
+    "mtime": 1788803635.761361,
+    "seen": 1791047145.139195,
+    "ast_hash": "951de32b1c9007889c6de43337c53104",
+    "semantic_hash": "951de32b1c9007889c6de43337c53104"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/ShaderPackScreenMixin.java": {
+    "mtime": 1788630640.2632918,
+    "seen": 1791047145.1391962,
+    "ast_hash": "181b967e5ddfd2ad7c50c5b73dc01be2",
+    "semantic_hash": "181b967e5ddfd2ad7c50c5b73dc01be2"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/ShaderWorkaroundsMixin.java": {
+    "mtime": 1787445639.3338344,
+    "seen": 1791047145.1391973,
+    "ast_hash": "444f3d1bf70830653a1e4770a34627d2",
+    "semantic_hash": "444f3d1bf70830653a1e4770a34627d2"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/SmoothedFloatMixin.java": {
+    "mtime": 1788630622.1482117,
+    "seen": 1791047145.1391988,
+    "ast_hash": "5d7d40ad2ceadc4762ed9db989495be7",
+    "semantic_hash": "5d7d40ad2ceadc4762ed9db989495be7"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/SodiumProgramsMixin.java": {
+    "mtime": 1788635898.1525004,
+    "seen": 1791047145.1392,
+    "ast_hash": "a210fb18753caa4822af8354fa061645",
+    "semantic_hash": "a210fb18753caa4822af8354fa061645"
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/StandardMacrosMixin.java": {
+    "mtime": 1788629724.3770998,
+    "seen": 1791047145.139201,
+    "ast_hash": "82efa77b0d8d355196816aa80fe9ddda",
+    "semantic_hash": "82efa77b0d8d355196816aa80fe9ddda"
+  },
+  "src/client/java/com/vulkairis/client/mixin/render/GlStateManagerMixin.java": {
+    "mtime": 1790967390.4611316,
+    "seen": 1791047145.1392026,
+    "ast_hash": "16efeba4e985f7e71dc4bd483210ee03",
+    "semantic_hash": "16efeba4e985f7e71dc4bd483210ee03"
+  },
+  "src/client/java/com/vulkairis/client/mixin/render/RenderTargetExtMixin.java": {
+    "mtime": 1788631394.6383958,
+    "seen": 1791047145.1392038,
+    "ast_hash": "b391c0b6a1fb82524f3e1f43f5274c0f",
+    "semantic_hash": "b391c0b6a1fb82524f3e1f43f5274c0f"
+  },
+  "src/client/java/com/vulkairis/client/mixin/render/RendererMixin.java": {
+    "mtime": 1791214734.61261,
+    "seen": 1791216807.5719178,
+    "ast_hash": "19199cd03444c932538d0a2deae8e83a",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/client/mixin/render/VulkairisRenderSystemMixin.java": {
+    "mtime": 1787504157.164312,
+    "seen": 1791047145.1392066,
+    "ast_hash": "6f075768fd757f8cdb39ca99938b38ac",
+    "semantic_hash": "6f075768fd757f8cdb39ca99938b38ac"
+  },
+  "src/client/java/com/vulkairis/client/mixin/vulkan/AttributeAccessor.java": {
+    "mtime": 1788812593.096555,
+    "seen": 1791047145.1392076,
+    "ast_hash": "324a815962712656f0c6267f62df4d42",
+    "semantic_hash": "324a815962712656f0c6267f62df4d42"
+  },
+  "src/client/java/com/vulkairis/client/mixin/vulkan/GLSLParserMixin.java": {
+    "mtime": 1791210679.075384,
+    "seen": 1791210725.7800953,
+    "ast_hash": "28bfe45dd4904c218f6db66e2784935e",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/client/mixin/vulkan/GlUtilMixin.java": {
+    "mtime": 1788630609.016919,
+    "seen": 1791047145.1392112,
+    "ast_hash": "4454f4ca663145e7217e18b4477dfc39",
+    "semantic_hash": "4454f4ca663145e7217e18b4477dfc39"
+  },
+  "src/client/java/com/vulkairis/client/mixin/vulkan/VkGlTextureMixin.java": {
+    "mtime": 1788633132.2498305,
+    "seen": 1791047145.1392126,
+    "ast_hash": "d351e29a7f51df1dd4667f257ea0e09f",
+    "semantic_hash": "d351e29a7f51df1dd4667f257ea0e09f"
+  },
+  "src/client/java/com/vulkairis/client/render/BridgeTestRenderer.java": {
+    "mtime": 1791047073.287427,
+    "seen": 1791047145.1392145,
+    "ast_hash": "fad7ca1a4d0c15b3563958d1c9d0cb76",
+    "semantic_hash": "fad7ca1a4d0c15b3563958d1c9d0cb76"
+  },
+  "src/client/java/com/vulkairis/compatibility/AnalysisResult.java": {
+    "mtime": 1788550925.6593874,
+    "seen": 1791047145.1392157,
+    "ast_hash": "4e8f47f57c97267344f002d6961dbe08",
+    "semantic_hash": "4e8f47f57c97267344f002d6961dbe08"
+  },
+  "src/client/java/com/vulkairis/compatibility/CompatibilityManager.java": {
+    "mtime": 1788550930.3853693,
+    "seen": 1791047145.1392171,
+    "ast_hash": "ec210fd497e31fba2a6b8d0514653105",
+    "semantic_hash": "ec210fd497e31fba2a6b8d0514653105"
+  },
+  "src/client/java/com/vulkairis/compatibility/ShaderAnalyzer.java": {
+    "mtime": 1791047249.8358874,
+    "seen": 1791047476.8167632,
+    "ast_hash": "8ea694d15ca858d478c7395d8113b2b3",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/config/ConfigManager.java": {
+    "mtime": 1788550820.85843,
+    "seen": 1791047145.1392198,
+    "ast_hash": "1bfc2afff7750af2549291f502e2be08",
+    "semantic_hash": "1bfc2afff7750af2549291f502e2be08"
+  },
+  "src/client/java/com/vulkairis/config/VulkairisConfig.java": {
+    "mtime": 1791047046.1371627,
+    "seen": 1791047145.1392212,
+    "ast_hash": "d8889dc24ffb66b2a9f9c11ca55e6f6f",
+    "semantic_hash": "d8889dc24ffb66b2a9f9c11ca55e6f6f"
+  },
+  "src/client/java/com/vulkairis/core/BackendState.java": {
+    "mtime": 1788788247.229048,
+    "seen": 1791047145.1392226,
+    "ast_hash": "e170dc173a57f6ec98f30061d26222e9",
+    "semantic_hash": "e170dc173a57f6ec98f30061d26222e9"
+  },
+  "src/client/java/com/vulkairis/core/DebugRenderMode.java": {
+    "mtime": 1791046813.0533278,
+    "seen": 1791047145.1392236,
+    "ast_hash": "4006b4a7ca69085c138d2b1c933052c5",
+    "semantic_hash": "4006b4a7ca69085c138d2b1c933052c5"
+  },
+  "src/client/java/com/vulkairis/core/RenderMatrices.java": {
+    "mtime": 1791047396.294676,
+    "seen": 1791047476.8167772,
+    "ast_hash": "6599b7598c72134728198401c2cff2a8",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/core/ShaderLifecycleState.java": {
+    "mtime": 1791046637.7680917,
+    "seen": 1791047145.1392262,
+    "ast_hash": "61dda95e89936505b4486f11805578d9",
+    "semantic_hash": "61dda95e89936505b4486f11805578d9"
+  },
+  "src/client/java/com/vulkairis/core/VulkairisController.java": {
+    "mtime": 1788788258.852827,
+    "seen": 1791047145.1392276,
+    "ast_hash": "20c537446c2183cf9a21a5d671c6163c",
+    "semantic_hash": "20c537446c2183cf9a21a5d671c6163c"
+  },
+  "src/client/java/com/vulkairis/core/VulkairisLifecycle.java": {
+    "mtime": 1788788630.6441758,
+    "seen": 1791047145.1392288,
+    "ast_hash": "1e4a23918aebdb55caff2dc0813b9af7",
+    "semantic_hash": "1e4a23918aebdb55caff2dc0813b9af7"
+  },
+  "src/client/java/com/vulkairis/diagnostics/DebugOverlay.java": {
+    "mtime": 1790947605.3603609,
+    "seen": 1791047145.1392307,
+    "ast_hash": "b14e08d90b460b8026dc653544f22282",
+    "semantic_hash": "b14e08d90b460b8026dc653544f22282"
+  },
+  "src/client/java/com/vulkairis/diagnostics/DiagnosticManager.java": {
+    "mtime": 1788550826.655209,
+    "seen": 1791047145.139232,
+    "ast_hash": "153434dbc725a2845cac3bf674f364e1",
+    "semantic_hash": "153434dbc725a2845cac3bf674f364e1"
+  },
+  "src/client/java/com/vulkairis/diagnostics/StageDiagnostics.java": {
+    "mtime": 1790966986.220258,
+    "seen": 1791047145.1392334,
+    "ast_hash": "a2f7ce405a61851040956fa444b57a5b",
+    "semantic_hash": "a2f7ce405a61851040956fa444b57a5b"
+  },
+  "src/client/java/com/vulkairis/diagnostics/VulkairisCommands.java": {
+    "mtime": 1791214682.262472,
+    "seen": 1791216807.5719726,
+    "ast_hash": "1f36ecdca0398ef5f252845f45ea351b",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/framebuffer/VulkanFramebuffer.java": {
+    "mtime": 1788550988.18738,
+    "seen": 1791047145.1392362,
+    "ast_hash": "472fb11968af3b129b55e07dcd007c12",
+    "semantic_hash": "472fb11968af3b129b55e07dcd007c12"
+  },
+  "src/client/java/com/vulkairis/framebuffer/VulkanImageResource.java": {
+    "mtime": 1788550969.3318622,
+    "seen": 1791047145.1392372,
+    "ast_hash": "d2bf72621f63e5e85b86cc4f0fb7abf9",
+    "semantic_hash": "d2bf72621f63e5e85b86cc4f0fb7abf9"
+  },
+  "src/client/java/com/vulkairis/framebuffer/VulkanImageView.java": {
+    "mtime": 1788550974.7722847,
+    "seen": 1791047145.1392384,
+    "ast_hash": "beb0283fdeaf700152f14fe181a2b059",
+    "semantic_hash": "beb0283fdeaf700152f14fe181a2b059"
+  },
+  "src/client/java/com/vulkairis/framebuffer/VulkanSampler.java": {
+    "mtime": 1788550980.984408,
+    "seen": 1791047145.1392393,
+    "ast_hash": "c582a6ac1cc86700183f966f334e84b3",
+    "semantic_hash": "c582a6ac1cc86700183f966f334e84b3"
+  },
+  "src/client/java/com/vulkairis/iris/IrisBridge.java": {
+    "mtime": 1791214751.2152927,
+    "seen": 1791216807.5719833,
+    "ast_hash": "17a7d7164c431b5f256b55f1ec083552",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/iris/IrisShaderMetadata.java": {
+    "mtime": 1788551009.969779,
+    "seen": 1791047145.1392422,
+    "ast_hash": "948556580f5c2e8a49b2690d83401704",
+    "semantic_hash": "948556580f5c2e8a49b2690d83401704"
+  },
+  "src/client/java/com/vulkairis/iris/StateUpdateNotifierManager.java": {
+    "mtime": 1788634706.402179,
+    "seen": 1791047145.1392434,
+    "ast_hash": "6156fb21c4359cefa8c35562aeb26626",
+    "semantic_hash": "6156fb21c4359cefa8c35562aeb26626"
+  },
+  "src/client/java/com/vulkairis/rendering/DrawCommand.java": {
+    "mtime": 1788550941.2206633,
+    "seen": 1791047145.139245,
+    "ast_hash": "acf3c60ad2c7ce4bd4607f1e9f42d453",
+    "semantic_hash": "acf3c60ad2c7ce4bd4607f1e9f42d453"
+  },
+  "src/client/java/com/vulkairis/rendering/RenderBackend.java": {
+    "mtime": 1788550951.8916054,
+    "seen": 1791047145.1392467,
+    "ast_hash": "f7c7fd62018843f47bbfdccddecc2855",
+    "semantic_hash": "f7c7fd62018843f47bbfdccddecc2855"
+  },
+  "src/client/java/com/vulkairis/rendering/RenderStateTracker.java": {
+    "mtime": 1790969341.5354412,
+    "seen": 1791047145.1392484,
+    "ast_hash": "e71dd1d042b868d6a3b80a7bbebb8e49",
+    "semantic_hash": "e71dd1d042b868d6a3b80a7bbebb8e49"
+  },
+  "src/client/java/com/vulkairis/rendering/VulkanRenderPassManager.java": {
+    "mtime": 1788550963.064869,
+    "seen": 1791047145.1392493,
+    "ast_hash": "aa43e9e9a438053bda15e59a38f5b2ae",
+    "semantic_hash": "aa43e9e9a438053bda15e59a38f5b2ae"
+  },
+  "src/client/java/com/vulkairis/rendering/VulkanRenderer.java": {
+    "mtime": 1788550958.3424182,
+    "seen": 1791047145.139251,
+    "ast_hash": "5cb12f656829e63932948462cacca121",
+    "semantic_hash": "5cb12f656829e63932948462cacca121"
+  },
+  "src/client/java/com/vulkairis/resource/ManagedResource.java": {
+    "mtime": 1788803115.7915125,
+    "seen": 1791047145.1392524,
+    "ast_hash": "a4850532e7b9d93b8fd5ac6475efa58d",
+    "semantic_hash": "a4850532e7b9d93b8fd5ac6475efa58d"
+  },
+  "src/client/java/com/vulkairis/resource/ResourceLifecycleState.java": {
+    "mtime": 1788803108.2664149,
+    "seen": 1791047145.1392539,
+    "ast_hash": "5139070149795effa8377f7f13bfaa61",
+    "semantic_hash": "5139070149795effa8377f7f13bfaa61"
+  },
+  "src/client/java/com/vulkairis/resource/VulkairisResourceManager.java": {
+    "mtime": 1788803127.1240685,
+    "seen": 1791047145.139255,
+    "ast_hash": "a72f4166ac873933a2bba6a1f96b18c9",
+    "semantic_hash": "a72f4166ac873933a2bba6a1f96b18c9"
+  },
+  "src/client/java/com/vulkairis/translation/ShaderModuleFactory.java": {
+    "mtime": 1791046909.991854,
+    "seen": 1791047145.1392565,
+    "ast_hash": "a3cd5072214f989ebf013debd33bb984",
+    "semantic_hash": "a3cd5072214f989ebf013debd33bb984"
+  },
+  "src/client/java/com/vulkairis/translation/ShaderReflection.java": {
+    "mtime": 1791047019.579281,
+    "seen": 1791047145.139258,
+    "ast_hash": "90465b1a594e2ad56a5f0ef5cb0c72c0",
+    "semantic_hash": "90465b1a594e2ad56a5f0ef5cb0c72c0"
+  },
+  "src/client/java/com/vulkairis/translation/ShaderTranslator.java": {
+    "mtime": 1791217336.5166118,
+    "seen": 1791217397.604041,
+    "ast_hash": "ec33770f986a144d4af3dc021381de30",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/translation/SpirvCompiler.java": {
+    "mtime": 1791047249.8358874,
+    "seen": 1791047476.81685,
+    "ast_hash": "0b7d60308be3cf1b90417964481b10bc",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/translation/SpirvReflector.java": {
+    "mtime": 1791047045.6625264,
+    "seen": 1791047145.1392627,
+    "ast_hash": "748779474dc9017ecc12ba0cd6081ce9",
+    "semantic_hash": "748779474dc9017ecc12ba0cd6081ce9"
+  },
+  "src/client/java/com/vulkairis/translation/SpirvValidator.java": {
+    "mtime": 1791047296.317089,
+    "seen": 1791047476.8168545,
+    "ast_hash": "bbe3db52bfcb20e7ccb3634ad991c24f",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/translation/VulkairisProgram.java": {
+    "mtime": 1791046890.7099564,
+    "seen": 1791047145.1392653,
+    "ast_hash": "9fc80ac84bcc8892a2ae272d4b3d9635",
+    "semantic_hash": "9fc80ac84bcc8892a2ae272d4b3d9635"
+  },
+  "src/client/java/com/vulkairis/translation/VulkairisShader.java": {
+    "mtime": 1791046800.4351125,
+    "seen": 1791047145.1392665,
+    "ast_hash": "4b2b5df19151cb68cf09c6a528b26408",
+    "semantic_hash": "4b2b5df19151cb68cf09c6a528b26408"
+  },
+  "src/client/java/com/vulkairis/translation/VulkanShaderRegistry.java": {
+    "mtime": 1791213661.1345234,
+    "seen": 1791216807.5720835,
+    "ast_hash": "98af9687eaa4c2321ad254e18c36ba70",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/vulkan/VulkanCapabilities.java": {
+    "mtime": 1788788803.9141748,
+    "seen": 1791047145.139269,
+    "ast_hash": "875a4c2992d8a2ddcd732e8f73ea9300",
+    "semantic_hash": "875a4c2992d8a2ddcd732e8f73ea9300"
+  },
+  "src/client/java/com/vulkairis/vulkan/VulkanDevice.java": {
+    "mtime": 1791046947.216571,
+    "seen": 1791047145.1392722,
+    "ast_hash": "ef918ff4c06bbafe32311f33eb6c20d3",
+    "semantic_hash": "ef918ff4c06bbafe32311f33eb6c20d3"
+  },
+  "src/client/java/com/vulkairis/vulkan/VulkanInstance.java": {
+    "mtime": 1788550855.970299,
+    "seen": 1791047145.1392736,
+    "ast_hash": "99bbdc9cdeb3a72ac2925c8cb26ee00a",
+    "semantic_hash": "99bbdc9cdeb3a72ac2925c8cb26ee00a"
+  },
+  "src/client/java/com/vulkairis/vulkan/VulkanSyncPrimitives.java": {
+    "mtime": 1788550868.6107354,
+    "seen": 1791047145.139275,
+    "ast_hash": "18c5093dd979cfd5a62c70820fb5de1f",
+    "semantic_hash": "18c5093dd979cfd5a62c70820fb5de1f"
+  },
+  "src/client/java/com/vulkairis/vulkan/descriptor/DescriptorContractValidator.java": {
+    "mtime": 1791046784.7891536,
+    "seen": 1791047145.1392763,
+    "ast_hash": "85a11d025908810141dd840aa8021e57",
+    "semantic_hash": "85a11d025908810141dd840aa8021e57"
+  },
+  "src/client/java/com/vulkairis/vulkan/descriptor/VulkanDescriptorManager.java": {
+    "mtime": 1791046893.5244057,
+    "seen": 1791047145.1392775,
+    "ast_hash": "6b94dd9126f5126eb8bd0de02617a6af",
+    "semantic_hash": "6b94dd9126f5126eb8bd0de02617a6af"
+  },
+  "src/client/java/com/vulkairis/vulkan/pipeline/PipelineCompatibilityValidator.java": {
+    "mtime": 1791047091.6242101,
+    "seen": 1791047145.1392787,
+    "ast_hash": "136f4a3afebbb41ab8175fe384c5e905",
+    "semantic_hash": "136f4a3afebbb41ab8175fe384c5e905"
+  },
+  "src/client/java/com/vulkairis/vulkan/pipeline/PipelineKey.java": {
+    "mtime": 1790969304.7470245,
+    "seen": 1791047145.1392798,
+    "ast_hash": "60c453098506f105fdddbf31dae944a7",
+    "semantic_hash": "60c453098506f105fdddbf31dae944a7"
+  },
+  "src/client/java/com/vulkairis/vulkan/pipeline/PipelineManager.java": {
+    "mtime": 1788788397.4942756,
+    "seen": 1791047145.139281,
+    "ast_hash": "546c207d420d0eedf922b8424117707d",
+    "semantic_hash": "546c207d420d0eedf922b8424117707d"
+  },
+  "src/client/java/com/vulkairis/vulkan/pipeline/VertexInputDescription.java": {
+    "mtime": 1790969294.0500355,
+    "seen": 1791047145.1392825,
+    "ast_hash": "55977c34f4235e1e03e9df4b56ad76e4",
+    "semantic_hash": "55977c34f4235e1e03e9df4b56ad76e4"
+  },
+  "src/client/java/com/vulkairis/vulkan/pipeline/VulkanPipelineFactory.java": {
+    "mtime": 1791047114.841771,
+    "seen": 1791047145.1392837,
+    "ast_hash": "3dadd541af2ae70cc8e9ba12c98d9777",
+    "semantic_hash": "3dadd541af2ae70cc8e9ba12c98d9777"
+  },
+  "src/client/java/com/vulkairis/vulkan/test/StandaloneVulkanTest.java": {
+    "mtime": 1791047260.0088813,
+    "seen": 1791047476.8168943,
+    "ast_hash": "23b825ceafd0b85f2b700430907a13d0",
+    "semantic_hash": ""
+  },
+  "src/client/resources/vulkairis.client.mixins.json": {
+    "mtime": 1791215931.908062,
+    "seen": 1791216807.5721076,
+    "ast_hash": "cb741eaa54177d2bbe4d1df603dca017",
+    "semantic_hash": ""
+  },
+  "src/main/java/com/vulkairis/Vulkairis.java": {
+    "mtime": 1787447988.4284184,
+    "seen": 1791047145.1392877,
+    "ast_hash": "810ae74dae1064f16ae7c0e9917d95e1",
+    "semantic_hash": "810ae74dae1064f16ae7c0e9917d95e1"
+  },
+  "src/main/resources/fabric.mod.json": {
+    "mtime": 1790967380.3467183,
+    "seen": 1791047145.1392891,
+    "ast_hash": "ae10ad65a9d176ad7fe015827cf017d4",
+    "semantic_hash": "ae10ad65a9d176ad7fe015827cf017d4"
+  },
+  "src/main/resources/vulkairis.mixins.json": {
+    "mtime": 1789650772.166837,
+    "seen": 1791047145.13929,
+    "ast_hash": "2f0f87b4aafa9ad92be227e3a5a71cac",
+    "semantic_hash": "2f0f87b4aafa9ad92be227e3a5a71cac"
+  },
+  "src/test/java/com/vulkairis/test/ControlledDrawGateTest.java": {
+    "mtime": 1791047084.8894675,
+    "seen": 1791047145.139291,
+    "ast_hash": "cdffd420267c9eefb0a3d35c65b09cee",
+    "semantic_hash": "cdffd420267c9eefb0a3d35c65b09cee"
+  },
+  "src/test/java/com/vulkairis/test/DescriptorContractTest.java": {
+    "mtime": 1791046918.234184,
+    "seen": 1791047145.1392925,
+    "ast_hash": "a8847908bb01039c7b26c1bea3c79007",
+    "semantic_hash": "a8847908bb01039c7b26c1bea3c79007"
+  },
+  "src/test/java/com/vulkairis/test/PipelineRegressionTest.java": {
+    "mtime": 1790947539.4083526,
+    "seen": 1791047145.1392937,
+    "ast_hash": "3c3b6ea32a18d45f8c5e160a690629ff",
+    "semantic_hash": "3c3b6ea32a18d45f8c5e160a690629ff"
+  },
+  "src/test/java/com/vulkairis/test/ReflectionValidationTest.java": {
+    "mtime": 1791047127.0051918,
+    "seen": 1791047145.1392946,
+    "ast_hash": "dc93a0b32ab8a15d497d761700bc971e",
+    "semantic_hash": "dc93a0b32ab8a15d497d761700bc971e"
+  },
+  "src/test/java/com/vulkairis/test/RenderMatricesTest.java": {
+    "mtime": 1791046910.3133051,
+    "seen": 1791047145.139296,
+    "ast_hash": "7e5a6d0b0ac18d54dc8704f2ef1cbb7d",
+    "semantic_hash": "7e5a6d0b0ac18d54dc8704f2ef1cbb7d"
+  },
+  "src/test/java/com/vulkairis/test/RenderStateTrackerTest.java": {
+    "mtime": 1790969366.5734725,
+    "seen": 1791047145.1392972,
+    "ast_hash": "6ea251b8b8b405d4cd90d50c8f34252f",
+    "semantic_hash": "6ea251b8b8b405d4cd90d50c8f34252f"
+  },
+  "src/test/java/com/vulkairis/test/ShaderAnalyzerTest.java": {
+    "mtime": 1788551071.8384643,
+    "seen": 1791047145.1392987,
+    "ast_hash": "35c468bdebe3381ddda6c0133940a321",
+    "semantic_hash": "35c468bdebe3381ddda6c0133940a321"
+  },
+  "src/test/java/com/vulkairis/test/ShaderCompilerTest.java": {
+    "mtime": 1790969437.3335292,
+    "seen": 1791047145.1392999,
+    "ast_hash": "50024a095624f133b96e2fd1dd82cfbb",
+    "semantic_hash": "50024a095624f133b96e2fd1dd82cfbb"
+  },
+  "src/test/java/com/vulkairis/test/ShaderLifecycleTest.java": {
+    "mtime": 1791047003.8099833,
+    "seen": 1791047145.139301,
+    "ast_hash": "d8ae9aa0a70f1c8c2ba9f0e5c929943a",
+    "semantic_hash": "d8ae9aa0a70f1c8c2ba9f0e5c929943a"
+  },
+  "src/test/java/com/vulkairis/test/ShadercVerification.java": {
+    "mtime": 1787449554.9885223,
+    "seen": 1791047145.1393025,
+    "ast_hash": "9226d2f49ea950cbbfe298767e245944",
+    "semantic_hash": "9226d2f49ea950cbbfe298767e245944"
+  },
+  "src/test/java/com/vulkairis/test/VulkairisTestRunner.java": {
+    "mtime": 1791214774.2914002,
+    "seen": 1791216807.5721524,
+    "ast_hash": "dbff3f652cd449da98e65bc4a597b720",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/VulkanCapabilitiesTest.java": {
+    "mtime": 1788551065.7721572,
+    "seen": 1791047145.1393054,
+    "ast_hash": "91b855ea6c1c09dc67a74b72ac6cf64d",
+    "semantic_hash": "91b855ea6c1c09dc67a74b72ac6cf64d"
+  },
+  ".github/workflows/build.yml": {
+    "mtime": 1789650970.8996408,
+    "seen": 1791047476.8169367,
+    "ast_hash": "0a69e1d4097be1be6a6748a630534a07",
+    "semantic_hash": ""
+  },
+  ".opencode/skills/graphify/SKILL.md": {
+    "mtime": 1791047081.7793174,
+    "seen": 1791047476.8169386,
+    "ast_hash": "01aee8bd7e04ed5f92e26df3848359dc",
+    "semantic_hash": ""
+  },
+  ".opencode/skills/graphify/references/add-watch.md": {
+    "mtime": 1791047061.9330611,
+    "seen": 1791047476.8169408,
+    "ast_hash": "c1f65eb4102ad515149303c7f296b718",
+    "semantic_hash": ""
+  },
+  ".opencode/skills/graphify/references/exports.md": {
+    "mtime": 1791047061.9330611,
+    "seen": 1791047476.8169427,
+    "ast_hash": "9da2a2152e60a22f07f05fed5158f287",
+    "semantic_hash": ""
+  },
+  ".opencode/skills/graphify/references/extraction-spec.md": {
+    "mtime": 1791047061.9330611,
+    "seen": 1791047476.8169446,
+    "ast_hash": "42fef56a01698118f7fd722acdadea34",
+    "semantic_hash": ""
+  },
+  ".opencode/skills/graphify/references/github-and-merge.md": {
+    "mtime": 1791047061.9340665,
+    "seen": 1791047476.8169465,
+    "ast_hash": "cde13df085e4c492aeb7ba298a996d0d",
+    "semantic_hash": ""
+  },
+  ".opencode/skills/graphify/references/hooks.md": {
+    "mtime": 1791047061.9345798,
+    "seen": 1791047476.8169482,
+    "ast_hash": "3f545db6ce646650bb9de588f5512a27",
+    "semantic_hash": ""
+  },
+  ".opencode/skills/graphify/references/query.md": {
+    "mtime": 1791047061.9345798,
+    "seen": 1791047476.8169503,
+    "ast_hash": "3c46f8ad006874260614ed8657d02307",
+    "semantic_hash": ""
+  },
+  ".opencode/skills/graphify/references/transcribe.md": {
+    "mtime": 1791047061.935088,
+    "seen": 1791047476.816952,
+    "ast_hash": "67b6a5fa6c0974e18f60db9f8932fbd8",
+    "semantic_hash": ""
+  },
+  ".opencode/skills/graphify/references/update.md": {
+    "mtime": 1791047061.935596,
+    "seen": 1791047476.8169541,
+    "ast_hash": "9378bd03d56baaf78bd738ab3848f142",
+    "semantic_hash": ""
+  },
+  "AGENTS.md": {
+    "mtime": 1791047081.782865,
+    "seen": 1791047476.8169558,
+    "ast_hash": "21ceb6533048be51308e69e7b74a35cf",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1790772064.2267575,
+    "seen": 1791047476.8169577,
+    "ast_hash": "d70c9111ab0eafb6e0d3a12aa01e35f2",
+    "semantic_hash": ""
+  },
+  "src/main/resources/assets/vulkairis/Icon.png": {
+    "mtime": 1788628897.6352038,
+    "seen": 1791047476.8169599,
+    "ast_hash": "34b5a20d74293c526a5327726af4cbee",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/IrisAttributeMappingTest.java": {
+    "mtime": 1791217295.029475,
+    "seen": 1791217397.6040926,
+    "ast_hash": "9ce77563325775bb300c1674cf80ae4f",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/DenseBindingRemapTest.java": {
+    "mtime": 1791049299.2463393,
+    "seen": 1791050389.6992452,
+    "ast_hash": "fab490505b35b0348f42881f128d8ea9",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/LayoutLocationInjectionTest.java": {
+    "mtime": 1791217312.944598,
+    "seen": 1791217397.6040943,
+    "ast_hash": "b3ba6804d1e75a9c94afdab41c264fa6",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/SamplerBindingInjectionTest.java": {
+    "mtime": 1791050881.9961698,
+    "seen": 1791051086.4082265,
+    "ast_hash": "41e5852455d95e769c424139c7ffb033",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/BoolScopeAndMultiDeclTest.java": {
+    "mtime": 1791051912.9008498,
+    "seen": 1791052100.1769345,
+    "ast_hash": "bcaca1fef8c7f504c63e13e1112e965c",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/iris/ShaderPackProgram.java": {
+    "mtime": 1791205563.3208113,
+    "seen": 1791205680.0161703,
+    "ast_hash": "faaeced80a7a455d9dd8e4d1519b4f7a",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/iris/ShaderPackProgramCatalog.java": {
+    "mtime": 1791207993.315251,
+    "seen": 1791208052.5330205,
+    "ast_hash": "8716f5fdfb1051fff3a05e49b22e01cb",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/iris/ShaderProgramKind.java": {
+    "mtime": 1791205555.4164114,
+    "seen": 1791205680.016174,
+    "ast_hash": "aa61be575c5d8f509d172d0933df0236",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/ShaderPackProgramCatalogTest.java": {
+    "mtime": 1791205594.7619073,
+    "seen": 1791205680.0162826,
+    "ast_hash": "a70e9c9a2548635bbefc29a654dc0035",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/graph/CompiledRenderGraph.java": {
+    "mtime": 1791205837.648911,
+    "seen": 1791205987.7878478,
+    "ast_hash": "1c820ea69df1c63f78544e86f7d80dca",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/graph/PassNode.java": {
+    "mtime": 1791205801.917119,
+    "seen": 1791205987.7878494,
+    "ast_hash": "8e4bdf828aea511dcaa47300a7b1eb16",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/graph/RenderGraph.java": {
+    "mtime": 1791205945.0471418,
+    "seen": 1791205987.7878504,
+    "ast_hash": "5687cce336e89b377b358dd148739e72",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/graph/RenderGraphException.java": {
+    "mtime": 1791205815.8904338,
+    "seen": 1791205987.7878513,
+    "ast_hash": "0af352ce6c9bdf5e0c03e7974e30e6c8",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/graph/RenderResource.java": {
+    "mtime": 1791205788.4378338,
+    "seen": 1791205987.7878523,
+    "ast_hash": "e6a04b11465847c9d528c8c709d46b2a",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/graph/ResourceAccess.java": {
+    "mtime": 1791205792.6039956,
+    "seen": 1791205987.787853,
+    "ast_hash": "18be26af321a68270d7b75aa03c71b5b",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/graph/ResourceKind.java": {
+    "mtime": 1791205964.957565,
+    "seen": 1791205987.7878542,
+    "ast_hash": "5dedf027cfb2eee04f834257fef42c3f",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/graph/ResourceLifetime.java": {
+    "mtime": 1791205812.406926,
+    "seen": 1791205987.787855,
+    "ast_hash": "e393b6e0be34b0ab9a11732a57a6c894",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/graph/ResourceTransition.java": {
+    "mtime": 1791205807.0342002,
+    "seen": 1791205987.7878556,
+    "ast_hash": "f0c4b178c0cd6d345e5472d31dc17747",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/graph/ResourceUsage.java": {
+    "mtime": 1791205777.1320212,
+    "seen": 1791205987.7878563,
+    "ast_hash": "5cb182ba03a2902eb62984be45e74cb9",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/graph/ShaderStage.java": {
+    "mtime": 1791205783.483579,
+    "seen": 1791205987.787857,
+    "ast_hash": "99486e0ce4ef0e1120828e6389ff8023",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/RenderGraphTest.java": {
+    "mtime": 1791205901.3993793,
+    "seen": 1791205987.7878997,
+    "ast_hash": "2ab8f94d6b21281ae8aacb929afb7a2a",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/resource/RenderTargetFormat.java": {
+    "mtime": 1791206352.3070662,
+    "seen": 1791206665.113347,
+    "ast_hash": "26bbee7052a433489ead6ed64d767d7d",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/resource/RenderTargetRegistry.java": {
+    "mtime": 1791214610.694339,
+    "seen": 1791216807.572043,
+    "ast_hash": "90a9e819efbef1a8e8f93d03ab6c70af",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/resource/SamplerPolicy.java": {
+    "mtime": 1791206358.288357,
+    "seen": 1791206665.113353,
+    "ast_hash": "c68413010d85c7c0348fd83f2eece0cd",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/resource/TextureResource.java": {
+    "mtime": 1791206374.6505108,
+    "seen": 1791206665.1133559,
+    "ast_hash": "eb46e05d69026a20f59d2abe725318a2",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/resource/TextureSpec.java": {
+    "mtime": 1791206366.7961154,
+    "seen": 1791206665.1133585,
+    "ast_hash": "4f453ad55dbe17dc5a6b5da44b151e3b",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/state/FrameState.java": {
+    "mtime": 1791206425.9931366,
+    "seen": 1791206665.1133606,
+    "ast_hash": "41c18206b311a998ac129e94fd1e4753",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/state/PassState.java": {
+    "mtime": 1791206435.4252954,
+    "seen": 1791206665.1133633,
+    "ast_hash": "11ba041d34275fc04581b29f2aa7c6bf",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/state/ProgramUniformStore.java": {
+    "mtime": 1791206213.775547,
+    "seen": 1791206665.1133654,
+    "ast_hash": "6271fc06b08f50deedf9b8c11fe4e234",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/state/ResourceBindings.java": {
+    "mtime": 1791206282.0222373,
+    "seen": 1791206665.1133676,
+    "ast_hash": "24e143dbd8083c8bd89afd39eb4e872c",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/state/SynchronizationState.java": {
+    "mtime": 1791206238.5476365,
+    "seen": 1791206665.1133697,
+    "ast_hash": "70432659913f76f79f83d3ee6d439a2b",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/state/UniformBlockPacker.java": {
+    "mtime": 1791206441.5313346,
+    "seen": 1791206665.1133718,
+    "ast_hash": "5976f3f52ed416f19f8b1db390391f1b",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/state/VulkairisRenderState.java": {
+    "mtime": 1791206246.8283763,
+    "seen": 1791206665.1133745,
+    "ast_hash": "ecff11d3b99ed2dbcfeb5d741b7d716e",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/sync/BarrierGenerator.java": {
+    "mtime": 1791206523.8072264,
+    "seen": 1791206665.1133769,
+    "ast_hash": "6fa1559deefc91ed1221e9c0d2b56c1e",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/sync/ImageLayoutMapper.java": {
+    "mtime": 1791206581.6697154,
+    "seen": 1791206665.1133788,
+    "ast_hash": "d30b9ce5d0ffe0b027e49ccf91f528ea",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/sync/ResourceStateTracker.java": {
+    "mtime": 1791206528.6698349,
+    "seen": 1791206665.1133811,
+    "ast_hash": "91c2c1b368ad47c9017c47c3b8cc7d06",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/vulkan/descriptor/DescriptorSetConvention.java": {
+    "mtime": 1791206616.4367087,
+    "seen": 1791206665.1134343,
+    "ast_hash": "4754d73cc6959cda79f93a95bf484724",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/vulkan/descriptor/DescriptorSetLayoutBuilder.java": {
+    "mtime": 1791206623.652723,
+    "seen": 1791206665.1134372,
+    "ast_hash": "7341d069330f747c878a9d4b15dc5e83",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/DescriptorSetLayoutTest.java": {
+    "mtime": 1791206631.6893876,
+    "seen": 1791206665.1134837,
+    "ast_hash": "656c1406b5b2fd2664953a326b4f37d3",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/FramePassStateTest.java": {
+    "mtime": 1791206481.8518255,
+    "seen": 1791206665.113486,
+    "ast_hash": "62ae7bd9279981011fe0fa0b393889dd",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/RenderTargetResourceTest.java": {
+    "mtime": 1791206393.863199,
+    "seen": 1791206665.1135094,
+    "ast_hash": "526064fe2cec96bb857f794084b06402",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/RenderingStateTest.java": {
+    "mtime": 1791206263.0640624,
+    "seen": 1791206665.1135116,
+    "ast_hash": "fdd593c6a8861a0ac09a03f762375ae5",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/ShaderTestHarnessTest.java": {
+    "mtime": 1791206156.7175004,
+    "seen": 1791206665.1135294,
+    "ast_hash": "de48ea8970091f37211f4be6ae88c4f0",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/SynchronizationTest.java": {
+    "mtime": 1791206538.5154798,
+    "seen": 1791206665.1135347,
+    "ast_hash": "6358a808e669383388e0b928d13981ff",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/testpack/ShaderPackTestHarness.java": {
+    "mtime": 1791206184.3323078,
+    "seen": 1791206665.1135428,
+    "ast_hash": "44bcd2caef74a654dd2f08aad901e83c",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/testpack/ShaderStageFixture.java": {
+    "mtime": 1791206116.952082,
+    "seen": 1791206665.1135488,
+    "ast_hash": "7550ffe51d4f78d86434c89bda8c59f0",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/testpack/ShaderTestPack.java": {
+    "mtime": 1791206122.906325,
+    "seen": 1791206665.1135511,
+    "ast_hash": "3614886ed0da5b3a51cb6c2e74e54cb4",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/testpack/ShaderTestPacks.java": {
+    "mtime": 1791206139.212213,
+    "seen": 1791206665.1135535,
+    "ast_hash": "9a32312c836af2a1897c8e346e8aa330",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/compatibility/ShaderPackCompatibilityReport.java": {
+    "mtime": 1791208027.5484316,
+    "seen": 1791208052.5329964,
+    "ast_hash": "0a8ac73708237f80479e87a3e28b03c1",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/exec/CompositeChainPlanner.java": {
+    "mtime": 1791207842.275653,
+    "seen": 1791208052.5330286,
+    "ast_hash": "2906d3c0e03682eab98c16ac9ef25da7",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/exec/ComputeDispatcher.java": {
+    "mtime": 1791207796.5847428,
+    "seen": 1791208052.5330298,
+    "ast_hash": "bca0cd3784e295957c8a07103dbc8b28",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/exec/ComputePipelineFactory.java": {
+    "mtime": 1791207787.1660695,
+    "seen": 1791208052.533031,
+    "ast_hash": "8b54c4a8161475a28d96e36557b69a69",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/exec/GbufferPassConfig.java": {
+    "mtime": 1791207915.7664165,
+    "seen": 1791208052.5330317,
+    "ast_hash": "7d247c5ff71ad9453367eb7693f00be5",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/exec/PassBinding.java": {
+    "mtime": 1791207865.9863772,
+    "seen": 1791208052.5330324,
+    "ast_hash": "227946586b3748f3a7c1bb2c97480437",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/exec/PresentationTarget.java": {
+    "mtime": 1791207850.6769733,
+    "seen": 1791208052.5330331,
+    "ast_hash": "19d74865d0b9c2cdcd04ef2ef5748cf4",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/exec/RenderGraphExecutor.java": {
+    "mtime": 1791207875.750251,
+    "seen": 1791208052.533034,
+    "ast_hash": "21ac4f9e742e38a4dccc14b339164cca",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/exec/ResizeCoordinator.java": {
+    "mtime": 1791207856.2265983,
+    "seen": 1791208052.5330348,
+    "ast_hash": "4308b8efc1eaa401851c87208b9afe85",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/exec/ShadowPassConfig.java": {
+    "mtime": 1791207939.7018974,
+    "seen": 1791208052.5330355,
+    "ast_hash": "bc4fcfe45d2b2a35679ae73fdd698c6a",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/exec/ShadowProjection.java": {
+    "mtime": 1791207807.4949336,
+    "seen": 1791208052.5330365,
+    "ast_hash": "c8c35efab7c463252af94cf6ef8977b3",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/exec/ShadowRenderer.java": {
+    "mtime": 1791207823.188117,
+    "seen": 1791208052.5330374,
+    "ast_hash": "67e15a9c8b2003e88ce9e07a8bb7cc69",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/translation/ShaderTranslationPipeline.java": {
+    "mtime": 1791207974.5652707,
+    "seen": 1791208052.5330725,
+    "ast_hash": "4580b458ebfd8a02196d1a6ee66f1eb0",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/GpuPhaseConfigTest.java": {
+    "mtime": 1791207920.3179238,
+    "seen": 1791208052.5331078,
+    "ast_hash": "42dcd91bdc1dcb67c34b4c3967a68249",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/TranslationPipelineAndReportTest.java": {
+    "mtime": 1791208008.6874413,
+    "seen": 1791208052.5331264,
+    "ast_hash": "84efebcf2839e4bef75e7d2f39849760",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/translation/VulkanModTypeNormalizer.java": {
+    "mtime": 1791210673.465132,
+    "seen": 1791210725.7801895,
+    "ast_hash": "a68cb809865b7239d8f410355a7c0438",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/VulkanModTypeNormalizerTest.java": {
+    "mtime": 1791210685.5234017,
+    "seen": 1791210725.7802417,
+    "ast_hash": "316537b45a51760af2bd4d8282ddaf5e",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/client/mixin/iris/TransformPatcherMixin.java": {
+    "mtime": 1791216687.9061067,
+    "seen": 1791216807.571911,
+    "ast_hash": "4f8667e32de74092f087fac5b5ab1dae",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/diagnostics/VulkairisArchitectureReport.java": {
+    "mtime": 1791213695.9439445,
+    "seen": 1791216807.57197,
+    "ast_hash": "6da41128c8522c6e22555fa7c9033900",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/exec/PackRenderPipeline.java": {
+    "mtime": 1791213712.5665307,
+    "seen": 1791216807.5720086,
+    "ast_hash": "c080481534c7d015943100e28cd093fc",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/exec/VulkairisFrameCoordinator.java": {
+    "mtime": 1791214617.9551837,
+    "seen": 1791216807.5720222,
+    "ast_hash": "cf64513f637ee7f66168e64b0c013e13",
+    "semantic_hash": ""
+  },
+  "src/client/java/com/vulkairis/rendering/resource/ColorSpacePolicy.java": {
+    "mtime": 1791213679.780553,
+    "seen": 1791216807.5720396,
+    "ast_hash": "8bc5d325166a38ca9e271aa8bc27ff9c",
+    "semantic_hash": ""
+  },
+  "src/test/java/com/vulkairis/test/ArchitectureReportAndFrameCoordinatorTest.java": {
+    "mtime": 1791214758.605146,
+    "seen": 1791216807.572113,
+    "ast_hash": "48bcd1892b2a7c0e748c261717a18bc4",
+    "semantic_hash": ""
+  }
+}

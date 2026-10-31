@@ -30,6 +30,31 @@ public class RendererMixin {
                         if (width > 0 && height > 0) {
                             com.vulkairis.rendering.exec.VulkairisFrameCoordinator.onBeginFrame(width, height);
                         }
+                        // Capture world state into the uniform bridge for transport.
+                        try {
+                            com.vulkairis.bridge.UniformBridge ub = com.vulkairis.bridge.UniformBridge.getInstance();
+                            ub.updateResolution(width, height);
+                            try {
+                                org.joml.Matrix4f mv = com.mojang.blaze3d.systems.RenderSystem.getModelViewMatrix();
+                                org.joml.Matrix4f proj = com.mojang.blaze3d.systems.RenderSystem.getProjectionMatrix();
+                                ub.updateMatrices(mv, proj);
+                            } catch (Throwable ignored) {
+                            }
+                            try {
+                                net.minecraft.client.Camera cam = client.gameRenderer.getMainCamera();
+                                net.minecraft.world.phys.Vec3 pos = cam.getPosition();
+                                ub.updateCamera((float) pos.x, (float) pos.y, (float) pos.z,
+                                        client.getFrameTimeNs());
+                            } catch (Throwable ignored) {
+                            }
+                            if (client.level != null) {
+                                try {
+                                    ub.updateTime(1.0f / 20.0f, client.level.getDayTime());
+                                } catch (Throwable ignored) {
+                                }
+                            }
+                        } catch (Throwable ignored) {
+                        }
                     }
                 });
     }
@@ -62,8 +87,10 @@ public class RendererMixin {
                         case FLAT, UV, LIGHTMAP, DEPTH, NO_POST ->
                                 StandaloneVulkanTest.executeVisualizerDraw(mode, cmdBuffer);
                         case OFF, NORMAL -> {
-                            // No controlled override. OFF means inert; NORMAL is the regular integration path.
-                            if (mode == DebugRenderMode.NORMAL && com.vulkairis.rendering.exec.VulkairisFrameCoordinator.isActive()) {
+                            // No controlled override. When a shader pack is active and the coordinator
+                            // has an executable graph, run the composite/final chain regardless of the
+                            // debug mode toggle (auto-engagement).
+                            if (com.vulkairis.rendering.exec.VulkairisFrameCoordinator.isActive()) {
                                 com.vulkairis.rendering.exec.VulkairisFrameCoordinator.onExecutePasses(cmdBuffer);
                             }
                         }

@@ -31,10 +31,20 @@ import java.util.regex.Pattern;
  * explicit location for them even with {@code auto_map_locations}; they are numbered densely
  * ({@code gl_FragData[n]} keeps its index, every other output takes the next free slot).</p>
  *
- * <p>Kept from the per-stage path: the {@code bool}-to-{@code int} normalization stays scoped
- * to the injected block (via {@link ShaderTranslator#normalizeTypesForVulkanMod}), and the
- * {@code iris_} attribute handling runs on every stage and therefore covers the union varying
+ * <p>Kept from the per-stage path: the {@code bool}-to-{@code int} normalization covers
+ * the injected block <em>and</em> {@code in}/{@code out} bool varyings (function
+ * signatures intentionally untouched) via
+ * {@link ShaderTranslator#normalizeTypesForVulkanMod}, and the {@code iris_}
+ * attribute handling runs on every stage and therefore covers the union varying
  * set as well.</p>
+ *
+ * <p>Varying split (plan §4 remainder): matrix/array/struct varyings are scalarized
+ * end-to-end (for example {@code mat4 m} to {@code m_c0..c3}) with rank==location
+ * slot discipline via {@link LegacyGlsl#splitVarying},
+ * {@link LegacyGlsl#splitStructVarying} and {@link LegacyGlsl#assignDenseLocations}.
+ * Only body-safe patterns are rewritten (whole-matrix writes, literal array
+ * indices, per-member struct accesses); anything else keeps the single
+ * declaration with slot accounting so packs never miscompile.</p>
  *
  * <p>Generation gating: translation results are cached under
  * (expanded text, program, defines, translator version) <em>plus</em> the
@@ -48,7 +58,7 @@ public final class ProgramTranslator {
     }
 
     /** Translator version baked into every program cache key; bump on any logic change. */
-    public static final String TRANSLATOR_VERSION = "phaseB-1";
+    public static final String TRANSLATOR_VERSION = "phaseB-3";
 
     /** Shared block name, identical to the per-stage path so reflection tooling keeps working. */
     public static final String UNIFORM_BLOCK_NAME = ShaderTranslator.UNIFORM_BLOCK_NAME;
@@ -175,6 +185,13 @@ public final class ProgramTranslator {
             notes.add("varying '" + oneSided + "' is declared on only one side of the program");
         }
 
+        // Union-coordinated varying split: both stages must scalarize the same
+        // bases identically, so safety is decided once here from both bodies.
+        // Only bases declared on at least one side with a multi-leaf expansion
+        // and body-safe patterns on both stages are approved; everything else
+        // keeps the single declaration with slot accounting.
+        Set<String> splitBases = decideVaryingSplit(drafts);
+
         // Fragment-output locations: gl_FragData indices keep their index, every other
         // fragment out takes the next free dense slot (fragment stage only).
         Map<String, Integer> fragOutputs = new LinkedHashMap<>();
@@ -208,7 +225,7 @@ public final class ProgramTranslator {
         // Finalize each stage against the fixed union.
         Map<String, TranslatedStage> stages = new LinkedHashMap<>();
         for (StageDraft draft : drafts) {
-            String finalized = finalizeStage(draft, blockMembers, fragOutputs);
+            String finalized = finalizeStage(draft, blockMembers, fragOutputs, splitBases);
             List<String> stageNotes = new ArrayList<>(draft.notes());
             com.vulkairis.iris.SourceProvenance.recordTranslation(
                     packId, name, draft.stage(), finalized);
@@ -304,8 +321,16 @@ public final class ProgramTranslator {
 
     private static String finalizeStage(StageDraft draft,
                                         Map<String, String> blockMembers,
-                                        Map<String, Integer> fragOutputs) {
+                                        Map<String, Integer> fragOutputs,
+                                        Set<String> splitBases) {
         String body = draft.body();
+        boolean isVertex = !"FRAGMENT".equals(draft.stage());
+
+        // Varying split first (declarations + bodies), so the bool-varying pass
+        // below sees the final scalar leaf declarations.
+        if (splitBases != null && !splitBases.isEmpty()) {
+            body = applyVaryingSplit(body, isVertex, splitBases);
+        }
 
         // Inject the single union block (std140, no binding: reflection assigns it).
         if (!blockMembers.isEmpty() && !body.contains(UNIFORM_BLOCK_NAME)) {
@@ -318,6 +343,15 @@ public final class ProgramTranslator {
             }
             block.append("};\n");
             body = insertAfterHeader(body, block.toString());
+        }
+        if (draft.legacy().needsFog() && !body.contains("struct VulkairisFogParams")) {
+            body = insertAfterHeader(body, "struct VulkairisFogParams {\n"
+                    + "    vec4 color;\n"
+                    + "    float start;\n"
+                    + "    float end;\n"
+                    + "    float scale;\n"
+                    + "    float density;\n"
+                    + "};\n");
         }
 
         // Binding policy: strip every layout(binding = N); strip every layout(location = N)
@@ -333,9 +367,143 @@ public final class ProgramTranslator {
             body = ensureVertexAttribDeclarations(body, draft.legacy(), true);
         }
 
-        // bool members become int for the VulkanMod-bound path (block-scoped only).
+        // bool members become int for the VulkanMod-bound path (injected block
+        // plus bool in/out varyings; function signatures stay untouched).
         body = ShaderTranslator.normalizeTypesForVulkanMod(body);
         return body;
+    }
+
+    // ------------------------------------------------------------------
+    // Union-coordinated varying split.
+    // ------------------------------------------------------------------
+
+    /**
+     * Decides once per program which varying bases to scalarize, so the vertex
+     * and fragment stages rewrite identically. A base is approved only when it
+     * expands to multiple leaves (via {@link LegacyGlsl#splitVarying} /
+     * {@link LegacyGlsl#splitStructVarying}) <em>and</em> both stage bodies use
+     * only the documented safe patterns.
+     */
+    static Set<String> decideVaryingSplit(List<StageDraft> drafts) {
+        Set<String> approved = new LinkedHashSet<>();
+        if (drafts == null || drafts.isEmpty()) {
+            return approved;
+        }
+        String vertexBody = null;
+        String fragmentBody = null;
+        Map<String, LegacyGlsl.VaryingDecl> vertexDecls = new LinkedHashMap<>();
+        Map<String, LegacyGlsl.VaryingDecl> fragmentDecls = new LinkedHashMap<>();
+        for (StageDraft draft : drafts) {
+            if (draft == null) {
+                continue;
+            }
+            if ("VERTEX".equals(draft.stage())) {
+                vertexBody = draft.body();
+                for (LegacyGlsl.VaryingDecl decl :
+                        LegacyGlsl.collectVaryingDecls(draft.body(), "out")) {
+                    vertexDecls.putIfAbsent(decl.name(), decl);
+                }
+            } else if ("FRAGMENT".equals(draft.stage())) {
+                fragmentBody = draft.body();
+                for (LegacyGlsl.VaryingDecl decl :
+                        LegacyGlsl.collectVaryingDecls(draft.body(), "in")) {
+                    fragmentDecls.putIfAbsent(decl.name(), decl);
+                }
+            }
+        }
+        Set<String> bases = new LinkedHashSet<>();
+        bases.addAll(vertexDecls.keySet());
+        bases.addAll(fragmentDecls.keySet());
+        for (String base : bases) {
+            LegacyGlsl.VaryingDecl vertexDecl = vertexDecls.get(base);
+            LegacyGlsl.VaryingDecl fragmentDecl = fragmentDecls.get(base);
+            LegacyGlsl.VaryingDecl representative =
+                    vertexDecl != null ? vertexDecl : fragmentDecl;
+            if (representative == null) {
+                continue;
+            }
+            if (vertexDecl != null && fragmentDecl != null
+                    && (!vertexDecl.type().equals(fragmentDecl.type())
+                            || vertexDecl.arrayLength() != fragmentDecl.arrayLength())) {
+                continue;
+            }
+            if (!LegacyGlsl.isBuiltinInterfaceType(representative.type())) {
+                boolean vertexHasMembers = vertexDecl != null
+                        && vertexDecl.structMembers() != null
+                        && !vertexDecl.structMembers().isEmpty();
+                boolean fragmentHasMembers = fragmentDecl != null
+                        && fragmentDecl.structMembers() != null
+                        && !fragmentDecl.structMembers().isEmpty();
+                if (vertexDecl != null && fragmentDecl != null
+                        && !(vertexHasMembers && fragmentHasMembers)) {
+                    continue;
+                }
+                if ((vertexDecl == null) != (fragmentDecl == null)
+                        && !(vertexHasMembers || fragmentHasMembers)) {
+                    continue;
+                }
+            }
+            List<LegacyGlsl.SplitLeaf> leaves = LegacyGlsl.expandVaryingLeaves(
+                    representative.type(), representative.name(),
+                    representative.arrayLength(), representative.structMembers());
+            if (leaves.size() <= 1 && leaves.get(0).name().equals(base)) {
+                continue;
+            }
+            if (!LegacyGlsl.isSafeToSplit(representative, vertexBody, fragmentBody)) {
+                continue;
+            }
+            approved.add(base);
+        }
+        return approved;
+    }
+
+    /**
+     * Applies the union-approved varying split to one stage body: stage uses
+     * become leaf uses, multi-leaf declarations become scalar leaf declarations,
+     * and split matrix varyings gain a reconstruction define on both stages
+     * (vertex writes are decomposed first, so the define only serves leftover
+     * reads there; fragment reads need no other rewrite).
+     */
+    static String applyVaryingSplit(String body, boolean isVertex, Set<String> splitBases) {
+        if (body == null || body.isEmpty() || splitBases == null || splitBases.isEmpty()) {
+            return body;
+        }
+        String direction = isVertex ? "out" : "in";
+        List<LegacyGlsl.VaryingDecl> decls = LegacyGlsl.collectVaryingDecls(body, direction);
+        Map<String, LegacyGlsl.VaryingDecl> byName = new LinkedHashMap<>();
+        for (LegacyGlsl.VaryingDecl decl : decls) {
+            byName.putIfAbsent(decl.name(), decl);
+        }
+        Set<String> applicable = new LinkedHashSet<>();
+        for (String base : splitBases) {
+            if (byName.containsKey(base)) {
+                applicable.add(base);
+            }
+        }
+        if (applicable.isEmpty()) {
+            return body;
+        }
+        String rewritten = LegacyGlsl.rewriteSplitStageUses(body, isVertex, byName, applicable);
+        rewritten = LegacyGlsl.rewriteSplitDeclarations(rewritten, direction, applicable);
+        StringBuilder defines = new StringBuilder();
+        for (String base : applicable) {
+            LegacyGlsl.VaryingDecl decl = byName.get(base);
+            if (decl != null && !LegacyGlsl.isBuiltinInterfaceType(decl.type())) {
+                continue;
+            }
+            if (decl != null && decl.type() != null
+                    && (decl.type().startsWith("mat") || decl.type().startsWith("dmat"))
+                    && decl.arrayLength() <= 1) {
+                String define = LegacyGlsl.matReconstructionDefine(base, decl.type());
+                if (!define.isEmpty() && !rewritten.contains("#define " + base + " ")) {
+                    defines.append(define);
+                }
+            }
+        }
+        if (defines.length() > 0) {
+            rewritten = insertAfterHeader(rewritten, defines.toString());
+        }
+        return rewritten;
     }
 
     // ------------------------------------------------------------------
@@ -477,6 +645,9 @@ public final class ProgramTranslator {
         }
         if (legacy.needsNormalMatrix()) {
             required.add("mat3 vulkairis_NormalMatrix;");
+        }
+        if (legacy.needsFog()) {
+            required.add("VulkairisFogParams vulkairis_Fog;");
         }
         return required;
     }
@@ -698,7 +869,19 @@ public final class ProgramTranslator {
                 if (name.isEmpty() || slots.containsKey(name)) {
                     continue;
                 }
-                slots.put(name, LegacyGlsl.locationSlotsFor(type, arrayLengthOf(declarator)));
+                // Split-aware slot accounting: matrices/arrays expand via
+                // splitVarying, structs via splitStructVarying with the visible
+                // definition (unknown structs keep the single declaration).
+                // This keeps the union inventory consistent with the scalarized
+                // declarations emitted by applyVaryingSplit.
+                int arrayLength = arrayLengthOf(declarator);
+                List<LegacyGlsl.StructMember> members =
+                        LegacyGlsl.isBuiltinInterfaceType(type)
+                                ? List.of()
+                                : LegacyGlsl.parseStructMembers(source, type);
+                int consumed = LegacyGlsl.expandVaryingLeaves(
+                        type, name, arrayLength, members).size();
+                slots.put(name, Math.max(1, consumed));
             }
         }
         return slots;

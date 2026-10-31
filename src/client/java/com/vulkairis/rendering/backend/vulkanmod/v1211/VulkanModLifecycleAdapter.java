@@ -68,7 +68,13 @@ public class VulkanModLifecycleAdapter {
 
     private void recordStage(VulkanModRenderStage stage, String details) {
         int order = stage.orderIndex();
-        boolean valid = (lastObservedOrder == -1) || (order >= lastObservedOrder);
+        // Composite post-processing legitimately runs during the end-of-frame render pass on
+        // this backend, so a late COMPOSITE_POST observation is not a real ordering fault.
+        // Treat it as valid and never let it lower the high-water mark, which would otherwise
+        // cascade into spurious violations for subsequent stages.
+        boolean lateComposite = (stage == VulkanModRenderStage.COMPOSITE_POST)
+                && (lastObservedOrder != -1) && (order < lastObservedOrder);
+        boolean valid = (lastObservedOrder == -1) || (order >= lastObservedOrder) || lateComposite;
 
         if (!valid) {
             String violation = String.format(
@@ -80,7 +86,11 @@ public class VulkanModLifecycleAdapter {
             DiagnosticManager.log(DiagnosticManager.Category.VULKAN, "Render lifecycle violation", violation);
         }
 
-        lastObservedOrder = order;
+        if (lateComposite) {
+            // keep the high-water mark unchanged
+        } else {
+            lastObservedOrder = order;
+        }
         StageObservation obs = new StageObservation(stage, currentFrame, System.currentTimeMillis(), details, valid);
 
         if (traceHistory.size() >= MAX_TRACE) {

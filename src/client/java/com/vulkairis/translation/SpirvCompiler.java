@@ -2,7 +2,6 @@ package com.vulkairis.translation;
 
 import com.vulkairis.diagnostics.DiagnosticManager;
 import net.irisshaders.iris.gl.shader.ShaderType;
-import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.shaderc.Shaderc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,9 +26,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <p>Phase C hardening (no {@code OutOfMemoryError: Out of stack space} on large packs):
  * <ul>
- *   <li>every {@code shaderc_compile_into_spv} call runs inside an explicit bounded
- *       {@link MemoryStack} frame that is pushed before the native handoff and popped
- *       immediately after, so per-compile native scratch can never accumulate;</li>
+ *   <li>every {@code shaderc_compile_into_spv} call hands malloc-backed UTF-8 buffers
+ *       to the native compiler (never the thread {@code MemoryStack}), so per-compile
+ *       native scratch can never exhaust the thread stack no matter how large the
+ *       expanded pack stage is;</li>
  *   <li>whole-source handoffs are bounded by {@link #MAX_SOURCE_CHARS}: shaderc requires
  *       the complete translation unit in one call, so an oversized source cannot be
  *       streamed — it is rejected with a structured result naming the limit;</li>
@@ -140,6 +140,17 @@ public class SpirvCompiler {
                     elapsedMs(started), false);
         }
 
+        // DH degrade pass: without the Distant Horizons mod, dh_* sources reference
+        // identifiers that can never be declared. Reject before the native call so the
+        // warmup worker, the unified recompile and direct callers all get a quiet labeled
+        // failure instead of a shaderc error dump; non-DH sources are unaffected.
+        if (com.vulkairis.compatibility.DistantHorizonsSupport.shouldSkipShader(shader, effectiveSource)) {
+            return ShaderCompileResult.failure(ShaderCompileResult.Status.STAGE_REJECTED,
+                    shader, 0, shadercKind, sourceHash,
+                    com.vulkairis.compatibility.DistantHorizonsSupport.skipReason(shader),
+                    profileDigest, elapsedMs(started), false);
+        }
+
         if (effectiveSource != null && effectiveSource.length() > MAX_SOURCE_CHARS) {
             return ShaderCompileResult.failure(ShaderCompileResult.Status.COMPILE_ERROR,
                     shader, 0, shadercKind, sourceHash,
@@ -214,20 +225,43 @@ public class SpirvCompiler {
         try {
             ShadercProfile.DEFAULT.configure(options);
 
-            // Explicit bounded stack frame per native handoff: pushed before the call and
-            // popped immediately after, so per-compile native scratch can never accumulate
-            // across nested or repeated compilations.
-            final String sourceForNative = effectiveSource;
+            // Heap handoff, never the thread MemoryStack: the String overload of
+            // shaderc_compile_into_spv encodes the whole translation unit on the
+            // caller's thread-local stack, and pack stages expanded to tens of
+            // thousands of lines exhaust it ("Out of stack space"), failing the
+            // pack on the render thread. malloc-backed buffers have no such cap.
+            //
+            // <p>Size discipline matters: the native entry takes an explicit
+            // source size, so the source buffer carries the exact bytes with NO
+            // terminator counted in (a counted trailing NUL surfaces in glslang
+            // as a stray '' token and fails every compilation). The file/entry
+            // names are plain NUL-terminated C strings, so they keep theirs.
             long result;
-            try (MemoryStack stack = MemoryStack.stackPush()) {
+            java.nio.ByteBuffer sourceUtf8 = null;
+            java.nio.ByteBuffer nameUtf8 = null;
+            java.nio.ByteBuffer entryUtf8 = null;
+            try {
+                sourceUtf8 = org.lwjgl.system.MemoryUtil.memUTF8(effectiveSource, false);
+                nameUtf8 = org.lwjgl.system.MemoryUtil.memUTF8(shader);
+                entryUtf8 = org.lwjgl.system.MemoryUtil.memUTF8("main");
                 result = Shaderc.shaderc_compile_into_spv(
                         compiler,
-                        sourceForNative,
+                        sourceUtf8,
                         shadercKind,
-                        shader,
-                        "main",
+                        nameUtf8,
+                        entryUtf8,
                         options
                 );
+            } finally {
+                if (sourceUtf8 != null) {
+                    org.lwjgl.system.MemoryUtil.memFree(sourceUtf8);
+                }
+                if (nameUtf8 != null) {
+                    org.lwjgl.system.MemoryUtil.memFree(nameUtf8);
+                }
+                if (entryUtf8 != null) {
+                    org.lwjgl.system.MemoryUtil.memFree(entryUtf8);
+                }
             }
 
             if (result == 0L) {
@@ -282,6 +316,17 @@ public class SpirvCompiler {
                     shader, 0, shadercKind, sourceHash,
                     e.getMessage() != null ? e.getMessage() : e.toString(),
                     profileDigest, elapsedMs(started), false);
+        } catch (OutOfMemoryError | StackOverflowError stackExhaustion) {
+            // Native/JVM stack exhaustion (e.g. MemoryStack "Out of stack space" on a
+            // huge pack stage) is a per-shader resource failure, not a bridge-wide
+            // fatal: contain it as a compile error so the pack degrades program by
+            // program instead of forcing fallback and rejecting everything.
+            String detail = "Shader too large for a single native compile (" + stackExhaustion + "); "
+                    + "reduce generated code or split the program";
+            LOGGER.warn("[Vulkairis] Contained stack exhaustion for '{}': {}", shader, detail);
+            return ShaderCompileResult.failure(ShaderCompileResult.Status.COMPILE_ERROR,
+                    shader, 0, shadercKind, sourceHash, detail,
+                    profileDigest, elapsedMs(started), false);
         } catch (Error fatal) {
             // Defined fatal path: record with the cause preserved, move the bridge to fallback,
             // then let the error propagate — an unrecoverable natives/JVM failure must stay visible.
@@ -309,6 +354,14 @@ public class SpirvCompiler {
                 : rejectionReason("stage " + stage + " / kind " + shadercKind);
         if (stageRejection != null) {
             return rejectedShader(name, String.valueOf(stage), stageRejection);
+        }
+
+        // DH degrade pass (runtime intercept path): without the Distant Horizons mod the
+        // dh_* sources can never compile, so return the contained rejected handle with the
+        // labeled reason instead of running translation plus shaderc and dumping errors.
+        if (com.vulkairis.compatibility.DistantHorizonsSupport.shouldSkipShader(name, glslSource)) {
+            return rejectedShader(name, String.valueOf(stage),
+                    com.vulkairis.compatibility.DistantHorizonsSupport.skipReason(name));
         }
 
         ByteBuffer spirv = null;

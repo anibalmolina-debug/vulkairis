@@ -6,6 +6,7 @@ import com.vulkairis.diagnostics.VulkairisCommands;
 import com.vulkairis.core.VulkairisController;
 import com.vulkairis.iris.ShaderPackProgram;
 import com.vulkairis.iris.ShaderPackProgramCatalog;
+import com.vulkairis.rendergraph.PassNode;
 import com.vulkairis.rendering.exec.PackChainPlan;
 import com.vulkairis.rendering.exec.PackRenderPipeline;
 import com.vulkairis.rendering.exec.VulkairisFrameCoordinator;
@@ -216,5 +217,37 @@ public class PhaseEChainFallbackTest {
 
         Assertions.assertTrue(controller.isFallbackTriggered());
         DiagnosticManager.clearHistory();
+    }
+
+    /**
+     * The Complementary r5.9.3 post chain ({@code composite, composite1, composite3,
+     * composite4, composite5, composite6, final}) must build an executable pipeline through
+     * {@code PackRenderPipeline.buildFromPlan} instead of failing the render graph with
+     * {@code composite1 -> composite3 -> composite1}. Every post program stays in the plan
+     * in order; none is silently dropped to break the false cycle.
+     */
+    @Test
+    public void testComplementaryShapedPostChainBuildsPipeline() {
+        PackChainPlan.clearForTests();
+        ShaderPackProgramCatalog catalog = catalogOf(
+                graphics("composite", ProgramGroup.Composite),
+                graphics("composite1", ProgramGroup.Composite),
+                graphics("composite3", ProgramGroup.Composite),
+                graphics("composite4", ProgramGroup.Composite),
+                graphics("composite5", ProgramGroup.Composite),
+                graphics("composite6", ProgramGroup.Composite),
+                graphics("final", ProgramGroup.Final));
+        PackChainPlan plan = PackChainPlan.resolve(
+                catalog, "ComplementaryReimagined_r5.9.3", "overworld", 1366, 745, 1024, 3L);
+
+        PackRenderPipeline pipeline =
+                PackRenderPipeline.buildFromPlan(plan, (name, w, h, targets) -> null);
+
+        Assertions.assertTrue(pipeline.hasGraph(), "the full post chain must stay executable");
+        Assertions.assertSame(plan, pipeline.getChainPlan());
+        Assertions.assertEquals(plan.postPrograms(),
+                pipeline.getGraph().getExecutionOrder().stream().map(PassNode::name).toList(),
+                "every pack pass must survive the graph build in plan order");
+        PackChainPlan.clearForTests();
     }
 }

@@ -100,7 +100,41 @@ public class ProgramCreatorMixin {
                 return progId;
             }
             VulkairisController.getInstance().incrementPipelineCount();
+            vulkairis$noteTerrainLink(name, progId);
         }
         return progId;
+    }
+
+    /**
+     * Phase D link 1 (§10.1): production terrain registration.
+     *
+     * <p>After a successful {@code VulkanModProgramBridge.link}, records the virtual id
+     * under the pack program name when it belongs to the terrain family, so
+     * {@code terrainLinkedId} stops answering 0 and the door's
+     * {@code TerrainPipelineDoor.decideCompile} pack branch becomes reachable. Test-only
+     * {@code noteTerrainProgram} calls become production here. Non-terrain programs are
+     * ignored. Never throws into the link path. Frozen {@code @Overwrite} signatures
+     * are unchanged; this is a narrow post-link hook only.</p>
+     */
+    @Unique
+    private static void vulkairis$noteTerrainLink(String name, int progId) {
+        try {
+            if (name == null || name.isBlank() || progId <= 0) {
+                return;
+            }
+            boolean terrain = false;
+            for (com.vulkairis.vulkan.pipeline.TerrainPipelineDoor.TerrainPass pass
+                    : com.vulkairis.vulkan.pipeline.TerrainPipelineDoor.TerrainPass.values()) {
+                if (name.equals(com.vulkairis.vulkan.pipeline.TerrainPipelineDoor.programNameFor(pass))) {
+                    terrain = true;
+                    break;
+                }
+            }
+            if (!terrain) {
+                return;
+            }
+            VulkanModProgramBridge.noteTerrainProgram(name, progId);
+        } catch (Throwable ignored) {
+        }
     }
 }

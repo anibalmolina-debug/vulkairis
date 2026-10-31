@@ -17,7 +17,7 @@ public final class TranslationCache {
      * Translator version baked into every key. Bump whenever translation logic changes so a
      * stale entry from an older translator can never be reused.
      */
-    public static final String TRANSLATOR_VERSION = "12.0";
+    public static final String TRANSLATOR_VERSION = "13.0";
 
     private static final int MAX_ENTRIES = 256;
 

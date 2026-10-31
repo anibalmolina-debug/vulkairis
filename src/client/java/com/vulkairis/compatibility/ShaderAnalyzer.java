@@ -21,6 +21,16 @@ public class ShaderAnalyzer {
             return AnalysisResult.unsupported(shaderName, "Empty shader source", "No GLSL code provided");
         }
 
+        // DH degrade pass: without the Distant Horizons mod, dh_* sources can never declare
+        // their identifiers, so compiling them only produces shaderc error dumps (plus one
+        // analyzer warning each). Reject fast with the labeled reason instead; non-DH
+        // sources are unaffected and flow into the checks below.
+        if (DistantHorizonsSupport.shouldSkipShader(shaderName, glslSource)) {
+            return AnalysisResult.unsupported(shaderName,
+                    DistantHorizonsSupport.SKIP_HEAD,
+                    DistantHorizonsSupport.skipReason(shaderName));
+        }
+
         // 1. Static feature checks for features currently outside prototype scope
         if (glslSource.contains("rayPayloadEXT") || glslSource.contains("accelerationStructureEXT")) {
             return AnalysisResult.unsupported(shaderName, "Hardware Ray Tracing in shader",
@@ -58,6 +68,18 @@ public class ShaderAnalyzer {
         } catch (Exception e) {
             LOGGER.warn("[Vulkairis/Analyzer] Dry-run compilation failed for '{}': {}", shaderName, e.getMessage());
             return AnalysisResult.unsupported(shaderName, "SPIR-V compilation error", e.getMessage());
+        } catch (LinkageError | OutOfMemoryError | StackOverflowError fatal) {
+            // Native-stack exhaustion on huge pack sources (MemoryStack "Out of stack
+            // space") and other JVM-level failures must stay contained here: the
+            // dry-run is advisory, and letting an Error escape rejects the whole pack
+            // and forces bridge fallback for what is one bad program.
+            LOGGER.warn("[Vulkairis/Analyzer] Dry-run contained JVM-level failure for '{}': {}",
+                    shaderName, fatal.toString());
+            return AnalysisResult.unsupported(shaderName, "SPIR-V compilation error",
+                    "Contained JVM-level failure (no fallback): " + fatal);
+        } catch (Throwable t) {
+            LOGGER.warn("[Vulkairis/Analyzer] Dry-run failed for '{}': {}", shaderName, t.toString());
+            return AnalysisResult.unsupported(shaderName, "SPIR-V compilation error", t.toString());
         }
     }
 }

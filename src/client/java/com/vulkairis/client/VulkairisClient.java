@@ -28,6 +28,12 @@ public class VulkairisClient implements ClientModInitializer {
         // 4. Ensure Iris StateUpdateNotifiers are safe and non-null
         com.vulkairis.iris.StateUpdateNotifierManager.ensureInitialized();
 
+        // 5. Bind the VulkanMod terrain hook so chunk draws resolve pack pipelines
+        try {
+            com.vulkairis.bridge.VulkanModTerrainHook.bind();
+        } catch (Throwable ignored) {
+        }
+
         LOGGER.info("[Vulkairis] Client initialization complete. Bridge state: {}",
                 VulkairisController.getInstance().getState());
     }

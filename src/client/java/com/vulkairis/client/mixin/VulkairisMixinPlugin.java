@@ -1,6 +1,6 @@
 package com.vulkairis.client.mixin;
 
-import com.vulkairis.client.VulkairisPreLaunch;
+import com.vulkairis.VulkairisPreLaunch;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.tree.ClassNode;

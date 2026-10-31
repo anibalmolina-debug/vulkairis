@@ -90,6 +90,17 @@ public final class RendererSettingsService {
         return ApplyStatus.applied(false, "applies immediately");
     }
 
+    public static ApplyStatus setLoadSpreadingEnabled(boolean enabled) {
+        VulkairisConfigManager.getConfig().setLoadSpreadingEnabled(enabled);
+        try {
+            com.vulkairis.translation.TranslationWorker.setLoadSpreadingEnabled(enabled);
+        } catch (Throwable ignored) {
+        }
+        VulkairisConfigManager.saveConfig();
+        return ApplyStatus.applied(false,
+                enabled ? "load spreading active" : "load spreading disabled");
+    }
+
     /** @return problems in the current persisted model (empty when valid) */
     public static List<String> currentProblems() {
         List<String> problems;

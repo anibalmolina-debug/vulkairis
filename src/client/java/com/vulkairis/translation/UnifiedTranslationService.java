@@ -176,6 +176,26 @@ public final class UnifiedTranslationService {
             return outcome;
         }
 
+        // DH degrade pass: without the Distant Horizons mod a fully DH-driven program
+        // (every stage references DH-only identifiers) can never compile, so reject the
+        // whole program once with the labeled reason instead of translating and dumping
+        // one shaderc error per stage. Mixed programs keep the per-stage behavior below.
+        if (isDistantHorizonsProgram(programName, units)) {
+            String reason = com.vulkairis.compatibility.DistantHorizonsSupport.skipReason(programName);
+            errors.add(reason);
+            LOGGER.warn("[Vulkairis/UnifiedTranslation] Skipping program '{}': {}",
+                    programName, reason);
+            DiagnosticManager.logStructured(DiagnosticManager.Category.SHADER,
+                    DiagnosticManager.Phase.TRANSLATE,
+                    com.vulkairis.compatibility.DistantHorizonsSupport.SKIP_HEAD,
+                    reason, null,
+                    programName, null, null, -1, null,
+                    "No action needed; far terrain degrades to vanilla rendering");
+            TranslationOutcome outcome = new TranslationOutcome(null, false, List.copyOf(errors));
+            OUTCOMES.put(outcomeKey, outcome);
+            return outcome;
+        }
+
         // Run the canonical program-together translation.
         ProgramTranslator.TranslatedProgram translated;
         try {
@@ -347,5 +367,27 @@ public final class UnifiedTranslationService {
             case 37305 -> "COMPUTE";
             default -> "FRAGMENT";
         };
+    }
+
+    /**
+     * DH degrade pass predicate: true only when the DH mod is absent and the program is
+     * distant by name or every collected stage source requires DH identifiers.
+     */
+    private static boolean isDistantHorizonsProgram(
+            String programName, List<ProgramTranslator.StageUnit> units) {
+        if (com.vulkairis.compatibility.DistantHorizonsSupport.isAvailable()
+                || units == null || units.isEmpty()) {
+            return false;
+        }
+        if (com.vulkairis.compatibility.DistantHorizonsSupport.isDistantProgramName(programName)) {
+            return true;
+        }
+        List<com.vulkairis.compatibility.DistantHorizonsSupport.ProgramTranslatorStage> stages =
+                new ArrayList<>();
+        for (ProgramTranslator.StageUnit unit : units) {
+            stages.add(new com.vulkairis.compatibility.DistantHorizonsSupport.ProgramTranslatorStage(
+                    unit != null ? unit.source() : null));
+        }
+        return com.vulkairis.compatibility.DistantHorizonsSupport.shouldSkipProgram(programName, stages);
     }
 }

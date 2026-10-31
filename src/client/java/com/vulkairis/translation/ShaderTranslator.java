@@ -190,6 +190,13 @@ public class ShaderTranslator {
             return cachedTranslation;
         }
 
+        // Legacy builtins first (mirrors ProgramTranslator.rewriteStage): later passes
+        // only see core-profile identifiers. Without this, Iris pack sources carrying
+        // GLSL-120 builtins (gl_TextureMatrix, gl_FragData, texture2D, ftransform, ...)
+        // reach shaderc under '#version 450 core' undeclared and every program fails.
+        LegacyGlsl.LegacyResult legacy = LegacyGlsl.translateLegacyBuiltins(body, isVertex);
+        body = legacy.source();
+
         // Collect #extension lines up front; they must precede any non-preprocessor token and
         // re-emitting them after #version keeps already-expanded (often multi-directive) sources valid.
         Map<String, String> extensions = new LinkedHashMap<>();
@@ -240,9 +247,44 @@ public class ShaderTranslator {
         boolean alreadyTransformed = body.contains(UNIFORM_BLOCK_NAME);
         if (!alreadyTransformed) {
             body = extractNonOpaqueUniforms(body, blockMembers);
+            // Legacy fixed-function uniforms join the same union block (mirrors
+            // ProgramTranslator.requiredMatrixMembers). Without them the rewritten
+            // vulkairis_* references stay undeclared and shaderc rejects the module.
+            for (String required : ProgramTranslator.requiredMatrixMembers(legacy)) {
+                String memberName = memberNameOf(required);
+                if (blockMembers.indexOf(memberName) < 0) {
+                    blockMembers.append("    ").append(required).append('\n');
+                }
+            }
+            if (legacy.needsFog() && blockMembers.indexOf("vulkairis_Fog") < 0) {
+                blockMembers.append("    VulkairisFogParams vulkairis_Fog;\n");
+            }
         }
 
         String header = buildHeader(extensions, blockMembers, alreadyTransformed, body);
+
+        // Legacy stage I/O the header must declare: indexed fragment outputs
+        // (gl_FragData[n] / gl_FragColor became vulkairisFragDataN) and the vertex
+        // attributes the rewritten body references. Fragment outs need explicit
+        // locations even with auto_map_locations; vertex ins are plain declarations.
+        if (!alreadyTransformed) {
+            if (!isVertex && !legacy.fragDataIndices().isEmpty()) {
+                header += LegacyGlsl.fragOutputDeclarations(legacy.fragDataIndices());
+            }
+            if (isVertex) {
+                header += legacyVertexAttribDeclarations(body, legacy);
+            }
+            if (legacy.needsFog() && !body.contains("VulkairisFogParams")
+                    && header.indexOf("struct VulkairisFogParams") < 0) {
+                header = "struct VulkairisFogParams {\n"
+                        + "    vec4 color;\n"
+                        + "    float start;\n"
+                        + "    float end;\n"
+                        + "    float scale;\n"
+                        + "    float density;\n"
+                        + "};\n" + header;
+            }
+        }
 
         int versionStart = body.indexOf("#version 450 core");
         if (versionStart < 0) {
@@ -314,59 +356,208 @@ public class ShaderTranslator {
 
     /**
      * Converts standalone GLSL {@code bool} type tokens to {@code int} <em>inside the injected
-     * {@link #UNIFORM_BLOCK_NAME} uniform block only</em>, for the VulkanMod-bound path.
+     * {@link #UNIFORM_BLOCK_NAME} uniform block and on {@code in}/{@code out} bool
+     * varyings</em>, for the VulkanMod-bound path.
      *
      * <p>VulkanMod's {@code PipelineConfig.convertType} only admits {@code matrix4x4}, {@code float}
      * and {@code int} family types; a uniform-block member typed {@code bool} reaches its
      * {@code default} branch and throws {@code RuntimeException("not admitted type: bool")}. Since
      * Vulkairis injects a {@code std140} block that VulkanMod's GLSLParser walks field-by-field,
-     * every boolean member must be pre-converted before handing the source over.</p>
+     * every boolean member must be pre-converted before handing the source over. Bool
+     * <em>varyings</em> ({@code in bool}/{@code out bool}, including split leaves such as
+     * {@code surface_m0}) are converted the same way so the vertex writer and fragment
+     * reader agree on {@code int}.</p>
      *
-     * <p>The conversion is deliberately scoped to that block body. A blanket rewrite of every
+     * <p>The conversion is deliberately scoped to that block body plus interface
+     * {@code in}/{@code out} declarations. A blanket rewrite of every
      * {@code bool} token also rewrote function return types, producing an {@code int} function whose
      * body still returned a {@code bool}-typed expression (for example a vector comparison such as
      * {@code return a == b;}), which Shaderc rejects with
      * {@code 'return' : type does not match, or is not convertible to, the function's return type}.
-     * Boolean <em>members</em> only ever live inside the injected block, so leaving every other
+     * Boolean <em>members</em> and <em>varyings</em> only ever live in those two places, so leaving every other
      * {@code bool} (function signatures, locals, parameters, return types) untouched keeps the rest
      * of the module valid GLSL.</p>
      *
-     * <p>Boolean uniforms are therefore represented as {@code int} (0 = false, non-zero = true).
-     * This is semantics-preserving only where the value is consumed as a condition, because GLSL's
-     * {@code if}/{@code ?:} conditions accept a scalar {@code int} with the usual non-zero-is-true
-     * rule. A {@code true}/{@code false} literal found inside the block is defensively rewritten to
-     * {@code 1}/{@code 0} as well; outside the block the literals are never touched.</p>
+     * <p>Boolean uniforms and varyings are therefore represented as {@code int} (0 = false,
+     * non-zero = true). This is semantics-preserving only where the value is consumed as a condition,
+     * because GLSL's {@code if}/{@code ?:} conditions accept a scalar {@code int} with the usual
+     * non-zero-is-true rule. A {@code true}/{@code false} literal found inside the block is defensively rewritten to
+     * {@code 1}/{@code 0} as well, as is a {@code true}/{@code false} literal directly assigned
+     * to a converted varying ({@code flag = true;} becomes {@code flag = 1;}) and a logical-not
+     * read ({@code !flag} becomes {@code (flag == 0)}); outside those positions the literals are
+     * never touched. Complex bool expressions assigned to a converted varying (for example a
+     * ternary mixing {@code true}/{@code false} arms, or {@code &&}/{@code ||} over the varying
+     * itself) stay compiler-reported: write them as {@code (expr ? 1 : 0)} instead.</p>
      *
-     * <p>Only the exact token {@code bool} is converted; identifiers such as {@code booleanType} are
+     * <p>Only the exact token {@code bool} (and {@code bvec2/3/4} to {@code ivec2/3/4} on
+     * varyings) is converted; identifiers such as {@code booleanType} are
      * left alone. The transform is null/empty-safe and idempotent. Kept separate from
      * {@link #preprocessGlsl(String, boolean)} so the Shaderc/test path keeps {@code bool} members
      * and its existing guarantees.</p>
      *
      * @param source GLSL source (typically the injected-block module); may be {@code null}
-     * @return the source with the injected block's {@code bool} members converted to {@code int}, or
-     *         the input unchanged when there is no injected block
+     * @return the source with the injected block's {@code bool} members and bool
+     *         {@code in}/{@code out} varyings converted to {@code int}, or
+     *         the input unchanged when there is nothing to convert
      */
     public static String normalizeTypesForVulkanMod(String source) {
         if (source == null || source.isEmpty()) {
             return source;
         }
-        Matcher header = UNIFORM_BLOCK_HEADER_PATTERN.matcher(source);
-        if (!header.find()) {
-            // No injected block: nothing VulkanMod's uniform converter would reject, so every
-            // bool (function signatures, locals, parameters, return types) stays untouched.
+        String converted = source;
+        Matcher header = UNIFORM_BLOCK_HEADER_PATTERN.matcher(converted);
+        if (header.find()) {
+            int openBrace = header.end() - 1;
+            int closeBrace = matchingBrace(converted, openBrace);
+            if (closeBrace >= 0) {
+                String body = converted.substring(openBrace + 1, closeBrace);
+                String rewritten = BOOL_TYPE_PATTERN.matcher(body).replaceAll("int");
+                rewritten = BOOL_LITERAL_PATTERN.matcher(rewritten).replaceAll(matchResult ->
+                        "true".equals(matchResult.group(1)) ? "1" : "0");
+                converted = converted.substring(0, openBrace + 1)
+                        + rewritten + converted.substring(closeBrace);
+            }
+        }
+        return normalizeBoolVaryings(converted);
+    }
+
+    /**
+     * Converts {@code in}/{@code out} bool varyings to {@code flat int}
+     * ({@code bvec2/3/4} to {@code flat ivec2/3/4}) where safe, leaving function
+     * signatures, locals, parameters and return types untouched.
+     *
+     * <p>Only top-level interface declarations match (the same line-oriented
+     * {@link #INTERFACE_DECL_PATTERN} the location pass uses, so already-qualified
+     * {@code layout(...)} lines never match twice and the pass is idempotent).
+     * Multi-declarator statements convert every declarator at once. Vulkan requires
+     * integer varyings to be {@code flat} (Shaderc rejects a smooth {@code int}
+     * varying), so the rewrite adds {@code flat} when absent and replaces a
+     * {@code smooth}/{@code noperspective} qualifier, which would be illegal on
+     * an integer. After the type swap, direct literal writes to converted scalar
+     * varyings become {@code = 1}/{@code = 0}, {@code !name} reads become
+     * {@code (name == 0)}, sole {@code if}/{@code while} conditions and ternary
+     * or {@code &&}/{@code ||} operands gain an explicit {@code != 0} (GLSL
+     * conditions need a real boolean, unlike C), {@code bool x = name} copies
+     * become {@code (name != 0)}, and {@code ==}/{@code !=} comparisons against
+     * {@code true}/{@code false} are folded to integer comparisons. All rewrites
+     * are idempotent and single-{@code =} assignment forms never match
+     * {@code ==} comparisons. Arithmetic over a converted varying and passing
+     * one to a {@code bool} function parameter stay compiler-reported: keep the
+     * value in {@code (name != 0)} form there.</p>
+     *
+     * @param source GLSL source; may be {@code null}
+     * @return the source with bool varyings converted, or the input unchanged
+     */
+    public static String normalizeBoolVaryings(String source) {
+        if (source == null || source.isEmpty()) {
             return source;
         }
-        int openBrace = header.end() - 1;
-        int closeBrace = matchingBrace(source, openBrace);
-        if (closeBrace < 0) {
-            // Malformed block (unbalanced braces): stay conservative and leave the source alone.
-            return source;
+        Matcher matcher = INTERFACE_DECL_PATTERN.matcher(source);
+        StringBuilder out = new StringBuilder(source.length() + 32);
+        int last = 0;
+        boolean changed = false;
+        List<String> convertedBools = new ArrayList<>();
+        List<String> convertedBvecs = new ArrayList<>();
+        while (matcher.find()) {
+            String type = matcher.group(6);
+            String replacement;
+            if ("bool".equals(type)) {
+                replacement = "int";
+            } else if ("bvec2".equals(type)) {
+                replacement = "ivec2";
+            } else if ("bvec3".equals(type)) {
+                replacement = "ivec3";
+            } else if ("bvec4".equals(type)) {
+                replacement = "ivec4";
+            } else {
+                continue;
+            }
+            for (String declarator : splitDeclarators(matcher.group(8))) {
+                String name = declaratorName(declarator);
+                if (!name.isEmpty()) {
+                    if ("bool".equals(type)) {
+                        convertedBools.add(name);
+                    } else {
+                        convertedBvecs.add(name);
+                    }
+                }
+            }
+            String preQualifiers = matcher.group(2);
+            String postQualifiers = matcher.group(5);
+            if (Pattern.compile("\\bflat\\b").matcher(
+                    preQualifiers + postQualifiers).find()) {
+                out.append(source, last, matcher.start(6));
+                out.append(replacement);
+                last = matcher.end(6);
+            } else {
+                preQualifiers = "flat " + preQualifiers
+                        .replaceAll("\\bsmooth[ \\t]+", "")
+                        .replaceAll("\\bnoperspective[ \\t]+", "");
+                postQualifiers = postQualifiers
+                        .replaceAll("\\bsmooth[ \\t]+", "")
+                        .replaceAll("\\bnoperspective[ \\t]+", "");
+                out.append(source, last, matcher.start());
+                out.append(matcher.group(1)).append(preQualifiers).append(matcher.group(3))
+                        .append(matcher.group(4)).append(postQualifiers).append(replacement)
+                        .append(matcher.group(7)).append(matcher.group(8))
+                        .append(matcher.group(9)).append(';').append(matcher.group(10));
+                last = matcher.end();
+            }
+            changed = true;
         }
-        String body = source.substring(openBrace + 1, closeBrace);
-        String converted = BOOL_TYPE_PATTERN.matcher(body).replaceAll("int");
-        converted = BOOL_LITERAL_PATTERN.matcher(converted).replaceAll(matchResult ->
-                "true".equals(matchResult.group(1)) ? "1" : "0");
-        return source.substring(0, openBrace + 1) + converted + source.substring(closeBrace);
+        String converted = source;
+        if (changed) {
+            out.append(source, last, source.length());
+            converted = out.toString();
+        }
+        for (String name : convertedBools) {
+            String quoted = Pattern.quote(name);
+            converted = Pattern.compile(
+                    "(?<![A-Za-z0-9_])" + quoted + "\\s*==\\s*true(?![A-Za-z0-9_])")
+                    .matcher(converted).replaceAll(
+                            Matcher.quoteReplacement("(" + name + " != 0)"));
+            converted = Pattern.compile(
+                    "(?<![A-Za-z0-9_])" + quoted + "\\s*==\\s*false(?![A-Za-z0-9_])")
+                    .matcher(converted).replaceAll(
+                            Matcher.quoteReplacement("(" + name + " == 0)"));
+            converted = Pattern.compile(
+                    "(?<![A-Za-z0-9_])" + quoted + "\\s*!=\\s*true(?![A-Za-z0-9_])")
+                    .matcher(converted).replaceAll(
+                            Matcher.quoteReplacement("(" + name + " == 0)"));
+            converted = Pattern.compile(
+                    "(?<![A-Za-z0-9_])" + quoted + "\\s*!=\\s*false(?![A-Za-z0-9_])")
+                    .matcher(converted).replaceAll(
+                            Matcher.quoteReplacement("(" + name + " != 0)"));
+            converted = Pattern.compile(
+                    "(?<![A-Za-z0-9_])" + quoted + "\\s*=\\s*true(?![A-Za-z0-9_])")
+                    .matcher(converted).replaceAll(
+                            Matcher.quoteReplacement(name + " = 1"));
+            converted = Pattern.compile(
+                    "(?<![A-Za-z0-9_])" + quoted + "\\s*=\\s*false(?![A-Za-z0-9_])")
+                    .matcher(converted).replaceAll(
+                            Matcher.quoteReplacement(name + " = 0"));
+            converted = Pattern.compile(
+                    "(?<![A-Za-z0-9_])!(\\s*)" + quoted + "(?![A-Za-z0-9_])")
+                    .matcher(converted).replaceAll(
+                            Matcher.quoteReplacement("(" + name + " == 0)"));
+            converted = Pattern.compile(
+                    "\\bbool\\s+([A-Za-z_]\\w*)\\s*=\\s*" + quoted + "\\s*;")
+                    .matcher(converted).replaceAll("bool $1 = (" + name + " != 0);");
+            converted = Pattern.compile(
+                    "\\b(if|while)\\s*\\(\\s*" + quoted + "\\s*\\)")
+                    .matcher(converted).replaceAll("$1 (" + name + " != 0)");
+            converted = Pattern.compile(
+                    "(?<![A-Za-z0-9_])" + quoted + "\\s*\\?")
+                    .matcher(converted).replaceAll(
+                            Matcher.quoteReplacement("(" + name + " != 0) ?"));
+            converted = Pattern.compile(
+                    "(?<![A-Za-z0-9_])" + quoted + "\\s*(&&|\\|\\|)")
+                    .matcher(converted).replaceAll("(" + name + " != 0) $1");
+            converted = Pattern.compile(
+                    "(&&|\\|\\|)\\s*" + quoted + "(?![A-Za-z0-9_])")
+                    .matcher(converted).replaceAll("$1 (" + name + " != 0)");
+        }
+        return converted;
     }
 
     /** Returns the index of the {@code '}'} matching the {@code '{'} at {@code openBrace}, or -1. */
@@ -839,6 +1030,63 @@ public class ShaderTranslator {
     }
 
     /**
+     * Builds one unified, deterministic descriptor assignment from the descriptors actually declared
+     * in the given stage sources, in order. Order is: the injected {@link #UNIFORM_BLOCK_NAME}
+     * first (if any stage declares it), then every other descriptor in first-seen declaration order
+     * (vertex stage before fragment stage). Values are exactly {@code 0..N-1}.
+     *
+     * <p>This is the single shared dense-binding contract (§4.2): the VulkanMod driver path
+     * ({@code VulkanModProgramBridge}) and every test derive their cross-stage assignment from
+     * this helper, so both stages always agree on bindings. VulkanMod's
+     * {@code Pipeline.createDescriptorSetLayout} indexes its binding array by the raw binding
+     * number, so only a dense {@code 0..N-1} assignment is Vulkan-legal here.
+     *
+     * <p>Never returns {@code null}: empty input simply yields an empty map.</p>
+     *
+     * @param stageSourcesInOrder stage sources in link order (vertex first, then fragment);
+     *        {@code null} entries are skipped, a {@code null} list yields an empty map
+     * @return an ordered {@code name -> dense binding} map with values exactly {@code 0..N-1}
+     */
+    public static Map<String, Integer> buildUnifiedBindingMap(List<String> stageSourcesInOrder) {
+        Map<String, Integer> bindings = new LinkedHashMap<>();
+        if (stageSourcesInOrder == null) {
+            return bindings;
+        }
+        // The injected block is one shared descriptor across both stages; pin it to binding 0 first
+        // regardless of which stage (or both) declares it, so the unified order matches the
+        // single-stage remap contract.
+        for (String source : stageSourcesInOrder) {
+            if (source != null && collectDescriptorNames(source).contains(UNIFORM_BLOCK_NAME)) {
+                bindings.put(UNIFORM_BLOCK_NAME, 0);
+                break;
+            }
+        }
+        for (String source : stageSourcesInOrder) {
+            if (source == null) {
+                continue;
+            }
+            for (String name : collectDescriptorNames(source)) {
+                if (!bindings.containsKey(name)) {
+                    bindings.put(name, bindings.size());
+                }
+            }
+        }
+        return bindings;
+    }
+
+    /**
+     * Two-stage convenience form of {@link #buildUnifiedBindingMap(List)}: vertex source first,
+     * then fragment source. {@code null} stages are treated as empty.
+     *
+     * @param vertSrc vertex-stage GLSL; may be {@code null}
+     * @param fragSrc fragment-stage GLSL; may be {@code null}
+     * @return an ordered {@code name -> dense binding} map with values exactly {@code 0..N-1}
+     */
+    public static Map<String, Integer> buildUnifiedBindingMap(String vertSrc, String fragSrc) {
+        return buildUnifiedBindingMap(List.of(vertSrc != null ? vertSrc : "", fragSrc != null ? fragSrc : ""));
+    }
+
+    /**
      * Rewrites every descriptor {@code layout(binding = N)} qualifier in {@code source} to a dense,
      * deterministic, 0-based index: the injected {@link #UNIFORM_BLOCK_NAME} first, then the other
      * descriptors in declaration order. This is the single-stage convenience form; callers that must
@@ -1085,6 +1333,56 @@ public class ShaderTranslator {
         }
         matcher.appendTail(out);
         return out.toString();
+    }
+
+    /** Declared identifier of a {@code type declarator;} member line, array stripped. */
+    private static String memberNameOf(String memberLine) {
+        String trimmed = memberLine.trim();
+        if (trimmed.endsWith(";")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1).trim();
+        }
+        int space = trimmed.lastIndexOf(' ');
+        String declarator = space >= 0 ? trimmed.substring(space + 1).trim() : trimmed;
+        int bracket = declarator.indexOf('[');
+        return bracket < 0 ? declarator : declarator.substring(0, bracket).trim();
+    }
+
+    /** Vertex-stage {@code in} declarations for every legacy attribute the body references. */
+    private static String legacyVertexAttribDeclarations(
+            String body, LegacyGlsl.LegacyResult legacy) {
+        StringBuilder declarations = new StringBuilder();
+        if (legacy.needsVertexAttrib() && !hasVertexInput(body, "vulkairis_Vertex")) {
+            declarations.append("in vec4 vulkairis_Vertex;\n");
+        }
+        if (legacy.needsNormalAttrib() && !hasVertexInput(body, "vulkairis_Normal")) {
+            declarations.append("in vec3 vulkairis_Normal;\n");
+        }
+        if (legacy.needsColorAttrib() && !hasVertexInput(body, "vulkairis_Color")) {
+            declarations.append("in vec4 vulkairis_Color;\n");
+        }
+        if (legacy.needsTexCoord0() && !hasVertexInput(body, "vulkairis_MultiTexCoord0")) {
+            declarations.append("in vec4 vulkairis_MultiTexCoord0;\n");
+        }
+        if (legacy.needsTexCoord1() && !hasVertexInput(body, "vulkairis_MultiTexCoord1")) {
+            declarations.append("in vec4 vulkairis_MultiTexCoord1;\n");
+        }
+        return declarations.toString();
+    }
+
+    private static final java.util.regex.Pattern VERTEX_INPUT_DECL = java.util.regex.Pattern.compile(
+            "(?m)^[ \\t]*in[ \\t]+[A-Za-z_]\\w*[ \\t]+([A-Za-z_]\\w*)");
+
+    private static boolean hasVertexInput(String body, String name) {
+        if (body == null || name == null) {
+            return false;
+        }
+        java.util.regex.Matcher matcher = VERTEX_INPUT_DECL.matcher(body);
+        while (matcher.find()) {
+            if (name.equals(matcher.group(1))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String buildHeader(Map<String, String> extensions, StringBuilder blockMembers,

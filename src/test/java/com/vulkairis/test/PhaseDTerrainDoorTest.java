@@ -7,6 +7,8 @@ import com.vulkairis.bridge.TerrainUniforms;
 import com.vulkairis.bridge.UniformBridge;
 import com.vulkairis.bridge.VulkanModProgramBridge;
 import com.vulkairis.rendering.FramebufferValidator;
+import com.vulkairis.rendering.RenderStateTracker;
+import com.vulkairis.rendering.exec.PassGates;
 import com.vulkairis.resource.RenderTargetRegistry;
 import com.vulkairis.resource.TargetDescriptor;
 import com.vulkairis.rendering.state.FrameState;
@@ -158,6 +160,172 @@ public class PhaseDTerrainDoorTest {
                 TerrainPipelineDoor.TerrainPass.TERRAIN, 0, reflection, 16L, provided);
         Assertions.assertFalse(renderFallback.usePackPipeline(),
                 "unlinked compile must dominate a valid descriptor plan");
+    }
+
+    @Test
+    public void testDoorHandedPassResolution() {
+        // Behavioral mapping (Iris mapTerrainRenderPass equivalent): translucent wins,
+        // then fragment-discard cutout, else solid terrain.
+        Assertions.assertEquals(TerrainPipelineDoor.TerrainPass.TERRAIN,
+                TerrainPipelineDoor.resolveHandedPass(false, false));
+        Assertions.assertEquals(TerrainPipelineDoor.TerrainPass.TERRAIN_CUTOUT,
+                TerrainPipelineDoor.resolveHandedPass(false, true));
+        Assertions.assertEquals(TerrainPipelineDoor.TerrainPass.TRANSLUCENT,
+                TerrainPipelineDoor.resolveHandedPass(true, false));
+        Assertions.assertEquals(TerrainPipelineDoor.TerrainPass.TRANSLUCENT,
+                TerrainPipelineDoor.resolveHandedPass(true, true));
+
+        // Shadow bit: every base pass reaches its shadow variant; shadow stays shadow.
+        Assertions.assertEquals(TerrainPipelineDoor.TerrainPass.SHADOW,
+                TerrainPipelineDoor.withShadow(TerrainPipelineDoor.TerrainPass.TERRAIN, true));
+        Assertions.assertEquals(TerrainPipelineDoor.TerrainPass.SHADOW_CUTOUT,
+                TerrainPipelineDoor.withShadow(TerrainPipelineDoor.TerrainPass.TERRAIN_CUTOUT, true));
+        Assertions.assertEquals(TerrainPipelineDoor.TerrainPass.SHADOW_TRANS,
+                TerrainPipelineDoor.withShadow(TerrainPipelineDoor.TerrainPass.TRANSLUCENT, true));
+        Assertions.assertEquals(TerrainPipelineDoor.TerrainPass.SHADOW,
+                TerrainPipelineDoor.withShadow(TerrainPipelineDoor.TerrainPass.SHADOW, true));
+        Assertions.assertEquals(TerrainPipelineDoor.TerrainPass.SHADOW,
+                TerrainPipelineDoor.withShadow(null, true));
+        Assertions.assertEquals(TerrainPipelineDoor.TerrainPass.TERRAIN,
+                TerrainPipelineDoor.withShadow(TerrainPipelineDoor.TerrainPass.TERRAIN, false));
+        Assertions.assertEquals(TerrainPipelineDoor.TerrainPass.TERRAIN,
+                TerrainPipelineDoor.withShadow(null, false));
+
+        // Combined: cutout and shadow are reachable, never collapsed to TERRAIN.
+        Assertions.assertEquals(TerrainPipelineDoor.TerrainPass.SHADOW_CUTOUT,
+                TerrainPipelineDoor.resolveHandedPass(false, true, true));
+        Assertions.assertEquals(TerrainPipelineDoor.TerrainPass.SHADOW_TRANS,
+                TerrainPipelineDoor.resolveHandedPass(true, false, true));
+        Assertions.assertEquals(TerrainPipelineDoor.TerrainPass.TERRAIN_CUTOUT,
+                TerrainPipelineDoor.resolveHandedPass(false, true, false));
+
+        Assertions.assertTrue(TerrainPipelineDoor.isCutout(TerrainPipelineDoor.TerrainPass.TERRAIN_CUTOUT));
+        Assertions.assertTrue(TerrainPipelineDoor.isCutout(TerrainPipelineDoor.TerrainPass.SHADOW_CUTOUT));
+        Assertions.assertFalse(TerrainPipelineDoor.isCutout(TerrainPipelineDoor.TerrainPass.TERRAIN));
+        Assertions.assertFalse(TerrainPipelineDoor.isCutout(TerrainPipelineDoor.TerrainPass.TRANSLUCENT));
+        Assertions.assertFalse(TerrainPipelineDoor.isCutout(null));
+    }
+
+    @Test
+    public void testDoorRenderLenientGate() {
+        ShaderReflection reflection = new ShaderReflection();
+        reflection.addUniformBlock("VulkairisUniformBlock", 0, 0, 16, 80, List.of(
+                new ShaderReflection.UniformInfo("projection", "mat4", 0, 64)));
+        reflection.addSampler("colortex0", 1, 0);
+        long flags = 16L;
+        List<DescriptorContractValidator.BindingSpec> provided =
+                DescriptorSetLayoutBuilder.toSpecs(
+                        DescriptorSetLayoutBuilder.forGraphics(reflection, flags));
+
+        // Unlinked compile dominates even a valid descriptor plan.
+        TerrainPipelineDoor.DoorDecision unlinked = TerrainPipelineDoor.decideRenderLenient(
+                TerrainPipelineDoor.TerrainPass.TERRAIN, 0, reflection, flags, provided);
+        Assertions.assertFalse(unlinked.usePackPipeline());
+
+        // Unknown gate inputs keep the compile verdict and name the skip.
+        TerrainPipelineDoor.DoorDecision noReflection = TerrainPipelineDoor.decideRenderLenient(
+                TerrainPipelineDoor.TerrainPass.TERRAIN, 77, null, flags, provided);
+        Assertions.assertTrue(noReflection.usePackPipeline());
+        TerrainPipelineDoor.DoorDecision noProvided = TerrainPipelineDoor.decideRenderLenient(
+                TerrainPipelineDoor.TerrainPass.TERRAIN, 77, reflection, flags, null);
+        Assertions.assertTrue(noProvided.usePackPipeline());
+        Assertions.assertFalse(TerrainPipelineDoor.isDescriptorGateApplicable(null, provided));
+        Assertions.assertFalse(TerrainPipelineDoor.isDescriptorGateApplicable(reflection, null));
+        Assertions.assertTrue(TerrainPipelineDoor.isDescriptorGateApplicable(reflection, provided));
+        Assertions.assertFalse(TerrainPipelineDoor.descriptorGateSkipReason(null, provided).isBlank());
+        Assertions.assertFalse(TerrainPipelineDoor.descriptorGateSkipReason(reflection, null).isBlank());
+        Assertions.assertTrue(TerrainPipelineDoor.descriptorGateSkipReason(reflection, provided).isBlank());
+
+        // Complete inputs run the strict gate: valid plan passes, mismatch refuses.
+        TerrainPipelineDoor.DoorDecision valid = TerrainPipelineDoor.decideRenderLenient(
+                TerrainPipelineDoor.TerrainPass.TERRAIN, 77, reflection, flags, provided);
+        Assertions.assertTrue(valid.usePackPipeline());
+        TerrainPipelineDoor.DoorDecision mismatch = TerrainPipelineDoor.decideRenderLenient(
+                TerrainPipelineDoor.TerrainPass.TERRAIN, 77, reflection, flags, List.of());
+        Assertions.assertFalse(mismatch.usePackPipeline());
+        Assertions.assertFalse(mismatch.fallbackReason().isBlank());
+
+        // Incomplete reflection is untrustworthy partial data: refuse with a reason.
+        ShaderReflection incomplete = new ShaderReflection();
+        incomplete.markIncomplete();
+        TerrainPipelineDoor.DoorDecision partial = TerrainPipelineDoor.decideRenderLenient(
+                TerrainPipelineDoor.TerrainPass.TERRAIN, 77, incomplete, flags, List.of());
+        Assertions.assertFalse(partial.usePackPipeline());
+        Assertions.assertTrue(partial.fallbackReason().contains("incomplete"));
+    }
+
+    @Test
+    public void testVertexContractBlockEvidence() {
+        Assertions.assertEquals(List.of("Position", "Color", "UV0", "UV2", "Normal"),
+                TerrainVertexContract.BLOCK_ATTRIBUTE_NAMES);
+
+        Assertions.assertTrue(TerrainVertexContract.isCoveredByBlock(
+                List.of("Position", "Color", "UV0", "UV2", "Normal")));
+        Assertions.assertTrue(TerrainVertexContract.isCoveredByBlock(List.of()));
+        Assertions.assertTrue(TerrainVertexContract.isCoveredByBlock(null));
+        Assertions.assertFalse(TerrainVertexContract.isCoveredByBlock(List.of("BLOCK_ID")));
+        Assertions.assertFalse(TerrainVertexContract.isCoveredByBlock(
+                List.of("Position", "TANGENT_FRAME")));
+
+        Assertions.assertEquals(5, TerrainVertexContract.offsets().size());
+        for (String name : TerrainVertexContract.EXTENDED_ATTRIBUTES.stream()
+                .map(TerrainVertexContract.TerrainAttribute::name).toList()) {
+            Assertions.assertEquals(TerrainVertexContract.offsetOf(name),
+                    TerrainVertexContract.offsets().get(name));
+        }
+
+        String evidence = TerrainVertexContract.describeBlockMapping();
+        Assertions.assertTrue(evidence.contains("68"), evidence);
+        Assertions.assertTrue(evidence.contains("BLOCK"), evidence);
+    }
+
+    @Test
+    public void testBridgeTerrainVertexHelpers() {
+        Assertions.assertEquals(68, VulkanModProgramBridge.terrainVertexStride());
+        Assertions.assertEquals(TerrainVertexContract.EXTENDED_STRIDE_BYTES,
+                VulkanModProgramBridge.terrainVertexStride());
+        Assertions.assertEquals(TerrainVertexContract.BASE_STRIDE_BYTES,
+                VulkanModProgramBridge.terrainVertexBaseStride());
+        Assertions.assertEquals(TerrainVertexContract.offsets(),
+                VulkanModProgramBridge.terrainVertexOffsets());
+        Assertions.assertEquals(TerrainVertexContract.inputLocations(5),
+                VulkanModProgramBridge.terrainVertexInputLocations(5));
+        Assertions.assertTrue(VulkanModProgramBridge.isTerrainVertexCoveredByBlock(
+                List.of("Position", "Color", "UV0", "UV2", "Normal")));
+        Assertions.assertFalse(VulkanModProgramBridge.isTerrainVertexCoveredByBlock(
+                List.of("BLOCK_ID")));
+        Assertions.assertFalse(VulkanModProgramBridge.terrainVertexEvidence().isBlank());
+    }
+
+    @Test
+    public void testBridgeTerrainRenderHelpers() {
+        Assertions.assertEquals(0x1L | 0x10L, VulkanModProgramBridge.TERRAIN_STAGE_FLAGS);
+
+        // Headless lookups report unknown programs as null and never throw. ("gbuffers_terrain"
+        // is deliberately not asserted here: earlier runner blocks register that name in the
+        // shared registry, so its presence is order-dependent, not a helper contract.)
+        Assertions.assertNull(VulkanModProgramBridge.terrainReflectionFor("no-such-terrain-program"));
+        Assertions.assertNull(VulkanModProgramBridge.terrainReflectionFor(null));
+        Assertions.assertNull(VulkanModProgramBridge.terrainReflectionFor("   "));
+        ShaderReflection reflection = new ShaderReflection();
+        reflection.addSampler("colortex0", 1, 0);
+        Assertions.assertNull(VulkanModProgramBridge.terrainProvidedFor(
+                0, reflection, VulkanModProgramBridge.TERRAIN_STAGE_FLAGS));
+        Assertions.assertNull(VulkanModProgramBridge.terrainProvidedFor(
+                4242, reflection, VulkanModProgramBridge.TERRAIN_STAGE_FLAGS));
+        Assertions.assertNull(VulkanModProgramBridge.terrainProvidedFor(
+                4242, null, VulkanModProgramBridge.TERRAIN_STAGE_FLAGS));
+    }
+
+    @Test
+    public void testPackPassMirror() {
+        RenderStateTracker tracker = RenderStateTracker.getInstance();
+        tracker.observePackPass("gbuffers_terrain", "colortex0");
+        Assertions.assertEquals("gbuffers_terrain", tracker.getLastPackPass());
+        Assertions.assertEquals("colortex0", tracker.getLastPackTarget());
+        tracker.observePackPass(null, null);
+        Assertions.assertEquals("none", tracker.getLastPackPass());
+        Assertions.assertEquals("none", tracker.getLastPackTarget());
     }
 
     @Test
@@ -436,5 +604,58 @@ public class PhaseDTerrainDoorTest {
         store.beginFrame(2L);
         store.write(6001, 1, ProgramUniformStore.UniformValue.floats("float", 1.5f));
         Assertions.assertEquals(1.5f, store.read(6001, 1).orElseThrow().floats()[0], 1e-6f);
+    }
+
+    // -- Terrain readiness gate: opens on link + valid descriptors, else names the miss. --
+
+    private static ShaderReflection terrainReflection() {
+        ShaderReflection reflection = new ShaderReflection();
+        reflection.addUniformBlock("VulkairisUniformBlock", 0, 0, 16, 80, List.of(
+                new ShaderReflection.UniformInfo("projection", "mat4", 0, 64)));
+        reflection.addSampler("colortex0", 1, 0);
+        return reflection;
+    }
+
+    @Test
+    public void testTerrainGateClosedWithoutLinkNamesMissingCondition() {
+        PassGates.GateStatus closed = PassGates.terrainStatusFor(
+                "gbuffers_terrain", 0, null, null, VulkanModProgramBridge.TERRAIN_STAGE_FLAGS);
+        Assertions.assertEquals(PassGates.Gate.TERRAIN, closed.gate());
+        Assertions.assertEquals(PassGates.Status.CLOSED, closed.status());
+        Assertions.assertTrue(closed.note().contains("no terrain execution path yet"), closed.note());
+        Assertions.assertTrue(closed.note().contains("gbuffers_terrain"), closed.note());
+        Assertions.assertTrue(closed.note().contains("virtual id 0"), closed.note());
+        Assertions.assertTrue(closed.note().contains("vanilla fallback"), closed.note());
+    }
+
+    @Test
+    public void testTerrainGateOpensOnLinkPlusValidDescriptors() {
+        ShaderReflection reflection = terrainReflection();
+        long flags = VulkanModProgramBridge.TERRAIN_STAGE_FLAGS;
+        List<DescriptorContractValidator.BindingSpec> provided =
+                DescriptorSetLayoutBuilder.toSpecs(
+                        DescriptorSetLayoutBuilder.forGraphics(reflection, flags));
+
+        PassGates.GateStatus open = PassGates.terrainStatusFor(
+                "gbuffers_terrain", 77, reflection, provided, flags);
+        Assertions.assertEquals(PassGates.Status.OPEN, open.status());
+        Assertions.assertTrue(open.note().contains("77"), open.note());
+        Assertions.assertTrue(open.note().contains("gbuffers_terrain"), open.note());
+
+        PassGates.GateStatus mismatch = PassGates.terrainStatusFor(
+                "gbuffers_terrain", 77, reflection, List.of(), flags);
+        Assertions.assertEquals(PassGates.Status.PARTIAL, mismatch.status());
+        Assertions.assertFalse(mismatch.note().isBlank());
+        Assertions.assertTrue(mismatch.note().contains("gbuffers_terrain"), mismatch.note());
+        Assertions.assertTrue(mismatch.note().contains("vanilla fallback"), mismatch.note());
+    }
+
+    @Test
+    public void testTerrainGateLiveWiringStaysHonestHeadless() {
+        // Headless there is no linked pipeline, so the live table must stay CLOSED while
+        // still naming the exact missing condition (never an empty or silent note).
+        PassGates.GateStatus live = PassGates.implemented().get(PassGates.Gate.TERRAIN);
+        Assertions.assertEquals(PassGates.Status.CLOSED, live.status());
+        Assertions.assertTrue(live.note().contains("gbuffers_terrain"), live.note());
     }
 }

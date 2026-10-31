@@ -190,10 +190,22 @@ public final class RenderGraph {
     private void buildEdges(
             Map<String, List<Access>> accessesByResource,
             List<Set<Integer>> adjacency) {
-        for (List<Access> accesses : accessesByResource.values()) {
+        for (Map.Entry<String, List<Access>> entry : accessesByResource.entrySet()) {
+            String resourceName = entry.getKey();
+            List<Access> accesses = entry.getValue();
             // Consider each unordered pair exactly once, choosing the correct edge direction from
-            // the read/write roles. Emitting both RAW and WAR for the same pair would fabricate a
-            // cycle, so the pair is classified instead of tested twice.
+            // the read/write roles plus declaration order. A read-after-write edge always runs
+            // writer-before-reader (the reader consumes the produced value, wherever the passes
+            // were declared). A write-after-write edge runs earlier-before-later so the last
+            // declared writer wins deterministically. A write-after-read (anti-dependency) edge
+            // runs reader-before-later-writer only when the read observes a real value: an
+            // external import or an earlier writer. That is the ping-pong composite reuse case
+            // (composite1/composite3 shape): pass N must finish sampling the intermediate before
+            // pass N+1 overwrites it. Pointing that edge writer-before-reader instead fabricates
+            // a cycle (composite1 -> composite3 -> composite1) out of a linear chain. When the
+            // read has no earlier producer it can only be satisfied by the later writer, so the
+            // edge runs writer-before-reader instead; paired with the matching read-after-write
+            // edge that forms a true cycle, which compile() rejects with a path diagnostic.
             for (int i = 0; i < accesses.size(); i++) {
                 for (int j = i + 1; j < accesses.size(); j++) {
                     Access a = accesses.get(i);
@@ -201,17 +213,39 @@ public final class RenderGraph {
                     if (a.passIndex() == b.passIndex()) {
                         continue;
                     }
-                    if (isWriter(a.usage()) && isReader(b.usage())) {
+                    boolean aWrite = isWriter(a.usage());
+                    boolean aRead = isReader(a.usage());
+                    boolean bWrite = isWriter(b.usage());
+                    boolean bRead = isReader(b.usage());
+                    if (aWrite && bRead) {
                         adjacency.get(a.passIndex()).add(b.passIndex()); // read-after-write
-                    } else if (isReader(a.usage()) && isWriter(b.usage())) {
-                        adjacency.get(b.passIndex()).add(a.passIndex()); // write-after-read
-                    } else if (isWriter(a.usage()) && isWriter(b.usage())) {
+                    } else if (aRead && bWrite) {
+                        if (externalResources.contains(resourceName) || hasEarlierWriter(accesses, i)) {
+                            adjacency.get(a.passIndex()).add(b.passIndex()); // write-after-read
+                        } else {
+                            adjacency.get(b.passIndex()).add(a.passIndex()); // unbacked read: writer must run first
+                        }
+                    } else if (aWrite && bWrite) {
                         adjacency.get(a.passIndex()).add(b.passIndex()); // write-after-write
                     }
                     // reader/reader pairs impose no ordering.
                 }
             }
         }
+    }
+
+    /**
+     * Whether any access before {@code endExclusive} in declaration order produces the resource.
+     * Backs the write-after-read rule: a read that already observes a produced value must stay
+     * ordered before a later overwrite instead of fabricating a reverse edge.
+     */
+    private static boolean hasEarlierWriter(List<Access> accesses, int endExclusive) {
+        for (int k = 0; k < endExclusive; k++) {
+            if (isWriter(accesses.get(k).usage())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

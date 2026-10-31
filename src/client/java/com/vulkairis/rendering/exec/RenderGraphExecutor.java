@@ -68,7 +68,7 @@ public final class RenderGraphExecutor {
             Map<String, PassBinding> bindings,
             Map<String, Long> imageHandles,
             ResourceStateTracker tracker) {
-        return execute(graph, bindings, imageHandles, tracker, null, null);
+        return execute(graph, bindings, imageHandles, tracker, null, null, null, null);
     }
 
     /**
@@ -84,7 +84,11 @@ public final class RenderGraphExecutor {
             Map<String, Long> imageHandles,
             ResourceStateTracker tracker,
             List<String> recordedOut,
-            List<String> skippedOut) {
+            List<String> skippedOut,
+            Map<String, net.vulkanmod.vulkan.framebuffer.Framebuffer> offscreenFbs,
+            Map<String, net.vulkanmod.vulkan.framebuffer.RenderPass> offscreenRps) {
+        if (offscreenFbs == null) offscreenFbs = java.util.Map.of();
+        if (offscreenRps == null) offscreenRps = java.util.Map.of();
         if (graph == null) {
             return new ExecutionReport(0, 0, false, "no graph");
         }
@@ -96,6 +100,18 @@ public final class RenderGraphExecutor {
         }
         if (cmd == null) {
             return new ExecutionReport(0, 0, false, "no active command buffer");
+        }
+        // Diagnostic: record the currently bound render pass / framebuffer so offscreen
+        // presentation gaps are visible in the log.
+        try {
+            net.vulkanmod.vulkan.Renderer vr = net.vulkanmod.vulkan.Renderer.getInstance();
+            if (vr != null) {
+                LOGGER.info("[Vulkairis/GraphExecutor] bound renderPass={} framebuffer={} swapchainImageIdx={}",
+                        vr.getBoundRenderPass() != null ? vr.getBoundRenderPass().getId() : -1,
+                        vr.getBoundFramebuffer() != null ? vr.getBoundFramebuffer().hashCode() : -1,
+                        net.vulkanmod.vulkan.Renderer.getCurrentImage());
+            }
+        } catch (Throwable ignored) {
         }
 
         List<BarrierGenerator.PipelineBarrier> barriers = BarrierGenerator.generate(graph);
@@ -149,7 +165,8 @@ public final class RenderGraphExecutor {
                     }
                     yield dispatched;
                 }
-                case GRAPHICS -> recordGraphics(cmd, binding);
+                case GRAPHICS -> recordGraphicsWithRenderPass(cmd, binding, pass.name(),
+                        offscreenFbs, offscreenRps);
                 case TRANSFER -> false;
             };
             if (ok) {
@@ -182,6 +199,42 @@ public final class RenderGraphExecutor {
         Map<String, List<BarrierGenerator.PipelineBarrier>> frozen = new LinkedHashMap<>();
         grouped.forEach((key, value) -> frozen.put(key, Collections.unmodifiableList(value)));
         return Collections.unmodifiableMap(frozen);
+    }
+
+    private static boolean recordGraphicsWithRenderPass(
+            VkCommandBuffer cmd, PassBinding binding, String passName,
+            Map<String, net.vulkanmod.vulkan.framebuffer.Framebuffer> offscreenFbs,
+            Map<String, net.vulkanmod.vulkan.framebuffer.RenderPass> offscreenRps) {
+        // Final pass writes into the already-bound swapchain pass.
+        boolean isFinal = passName != null && passName.toLowerCase(java.util.Locale.ROOT).contains("final");
+        net.vulkanmod.vulkan.framebuffer.Framebuffer fb = null;
+        net.vulkanmod.vulkan.framebuffer.RenderPass rp = null;
+        if (!isFinal && offscreenFbs != null && !offscreenFbs.isEmpty()) {
+            // Pick the first available offscreen framebuffer/render pass.
+            java.util.Map.Entry<String, net.vulkanmod.vulkan.framebuffer.Framebuffer> e =
+                    offscreenFbs.entrySet().iterator().next();
+            fb = e.getValue();
+            rp = offscreenRps.get(e.getKey());
+        }
+        net.vulkanmod.vulkan.Renderer renderer = null;
+        try { renderer = net.vulkanmod.vulkan.Renderer.getInstance(); } catch (Throwable ignored) {}
+        boolean began = false;
+        if (fb != null && rp != null && renderer != null) {
+            try {
+                began = renderer.beginRenderPass(rp, fb);
+            } catch (Throwable t) {
+                began = false;
+            }
+        }
+        boolean result;
+        try {
+            result = recordGraphics(cmd, binding);
+        } finally {
+            if (began && renderer != null) {
+                try { renderer.endRenderPass(); } catch (Throwable ignored) {}
+            }
+        }
+        return result;
     }
 
     private static boolean recordGraphics(VkCommandBuffer cmd, PassBinding binding) {

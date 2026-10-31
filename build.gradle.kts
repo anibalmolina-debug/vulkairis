@@ -11,11 +11,8 @@ repositories {
 	mavenCentral()
 }
 
-configurations.all {
-		resolutionStrategy {
-			force("org.spongepowered:mixin:0.8.5")
-		}
-}
+
+
 
 loom {
 	splitEnvironmentSourceSets()
@@ -99,6 +96,7 @@ tasks.register<JavaExec>("runTestRunner") {
 	systemProperty("junit.jupiter.execution.parallel.enabled", "true")
 }
 
+
 tasks.named("check") {
 	dependsOn("runTestRunner")
 }
@@ -106,6 +104,30 @@ tasks.named("check") {
 tasks.matching { it.name == "downloadAssets" }.configureEach {
 	enabled = false
 }
+
+tasks.matching { it.name.startsWith("runClient") }.configureEach {
+	doFirst {
+		val loomCache = file(".gradle/loom-cache")
+		if (loomCache.exists()) {
+			loomCache.walk().filter { it.isFile && (it.extension == "cfg" || it.extension == "txt") }.forEach { f ->
+				var text = f.readText(Charsets.UTF_8)
+				if (text.contains("Molina")) {
+					text = text.replace(Regex("""C:[\\/]Users[\\/][^\r\n;\\/]+?[\\/]\.gradle"""), """C:\\gradle-ascii""")
+					logger.lifecycle("[Vulkairis] Auto-sanitized non-ASCII user path in ${f.name}")
+				}
+				if (f.name == "remapClasspath.txt") {
+					val entries = text.split(";").filter { !it.contains("fabric-loader") }
+					text = entries.joinToString(";")
+					logger.lifecycle("[Vulkairis] Stripped fabric-loader from remapClasspath.txt (${entries.size} entries remain)")
+				}
+				f.writeText(text, Charsets.UTF_8)
+			}
+		}
+	}
+}
+
+
+
 
 
 tasks.processResources {

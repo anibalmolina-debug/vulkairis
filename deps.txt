@@ -1,0 +1,24 @@
+Starting a Gradle Daemon, 6 busy and 63 stopped Daemons could not be reused, use --status for details
+
+> Configure project :
+Fabric Loom: 1.17.21
+"Lock for cache='C:\Users\Molina Nuñez\.gradle\caches\fabric-loom', project=':'" is currently held by pid '15856'.
+Run with --info or --debug to show arguments, may reveal sensitive info
+- pid: 15856
+- command: C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot\bin\java.exe
+- started at: 2026-10-13T16:22:49.540Z
+- user: MOLINANU¥EZ\Molina Nuñez
+- parent:
+	- pid: 3904
+	- command: C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot\bin\java.exe
+	- started at: 2026-10-13T16:22:45.899Z
+	- user: MOLINANU¥EZ\Molina Nuñez
+	- parent:
+		- pid: 9568
+		- command: C:\Program Files\Git\usr\bin\sh.exe
+		- started at: 2026-10-13T16:22:44.135Z
+		- user: MOLINANU¥EZ\Molina Nuñez
+Waiting for lock to be released...
+Have been waiting on "Lock for cache='C:\Users\Molina Nuñez\.gradle\caches\fabric-loom', project=':'" held by pid '15856' for 1 minute(s).
+If this persists for an unreasonable length of time, kill this process, run './gradlew --stop' and then try again.
+

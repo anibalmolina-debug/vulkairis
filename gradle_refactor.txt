@@ -1,0 +1,8 @@
+modImplementation(files("LIBS/iris-fabric-${providers.gradleProperty("iris").get()}.jar")) -> modImplementation("iris-fabric")
+modImplementation(files("LIBS/VulkanMod-${providers.gradleProperty("vulkanmod").get()}.jar")) -> modImplementation("VulkanMod")
+modCompileOnly(files("LIBS/sodium-fabric-0.8.12-beta.1+mc1.21.1.jar")) -> modCompileOnly("sodium-fabric")
+implementation(files("LIBS/sodium-api.jar")) -> implementation("sodium-api")
+modImplementation(files("LIBS/modmenu-11.0.4.jar")) -> modImplementation("modmenu")
+implementation(files("LIBS/jcpp-1.4.14.jar")) -> implementation("jcpp")
+implementation(files("LIBS/glsl-transformer-3.0.0-pre3.jar")) -> implementation("glsl-transformer")
+implementation(files("LIBS/antlr4-runtime-4.13.1.jar")) -> implementation("antlr4-runtime")

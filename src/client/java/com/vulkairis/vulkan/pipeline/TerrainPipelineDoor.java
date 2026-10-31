@@ -17,6 +17,11 @@ import java.util.Objects;
  * honest fallback reason to record when it is not. No GL calls, no native calls, no
  * swapchain access — the actual GPU bind stays behind {@code VulkanModProgramBridge} and
  * {@code VulkanPipelineFactory} at runtime.</p>
+ *
+ * <p>Per-frame pack pass/target evidence is recorded on {@code VulkairisController}
+ * ({@code activePass}/{@code currentTarget}) plus {@code StageDiagnostics} lines, and
+ * mirrored into {@code RenderStateTracker} (diagnostics mirror for the plan's §6.5/§8
+ * acceptance wording).</p>
  */
 public final class TerrainPipelineDoor {
 
@@ -62,6 +67,67 @@ public final class TerrainPipelineDoor {
         } catch (IllegalArgumentException e) {
             return TerrainPass.TERRAIN;
         }
+    }
+
+    /**
+     * Behavioral equivalent of Iris {@code SodiumPrograms.mapTerrainRenderPass} for
+     * non-shadow rendering: translucent passes stay translucent, alpha-tested
+     * (fragment-discard) passes are cutout, everything else is solid terrain.
+     *
+     * <p>Mirrors the identity mapping (SOLID/CUTOUT/TRANSLUCENT singletons) without
+     * calling into Iris: callers pass the observed behavior flags.</p>
+     *
+     * @param translucent whether the handed pass blends (translucent family)
+     * @param fragmentDiscard whether the handed pass alpha-tests (cutout family)
+     * @return the matching non-shadow door pass
+     */
+    public static TerrainPass resolveHandedPass(boolean translucent, boolean fragmentDiscard) {
+        if (translucent) {
+            return TerrainPass.TRANSLUCENT;
+        }
+        if (fragmentDiscard) {
+            return TerrainPass.TERRAIN_CUTOUT;
+        }
+        return TerrainPass.TERRAIN;
+    }
+
+    /**
+     * Applies the shadow bit to a resolved pass, mirroring the shadow branch of Iris
+     * {@code SodiumPrograms.mapTerrainRenderPass} ({@code ShadowRenderingState}).
+     *
+     * @param base the non-shadow pass (may be {@code null}, treated as {@code TERRAIN})
+     * @param shadowActive whether shadows are currently being rendered
+     * @return the shadow variant when active, otherwise the base pass
+     */
+    public static TerrainPass withShadow(TerrainPass base, boolean shadowActive) {
+        TerrainPass safe = base == null ? TerrainPass.TERRAIN : base;
+        if (!shadowActive) {
+            return safe;
+        }
+        return switch (safe) {
+            case TERRAIN -> TerrainPass.SHADOW;
+            case TERRAIN_CUTOUT -> TerrainPass.SHADOW_CUTOUT;
+            case TRANSLUCENT -> TerrainPass.SHADOW_TRANS;
+            default -> safe;
+        };
+    }
+
+    /**
+     * Full handed-pass resolution: behavioral mapping plus the shadow bit.
+     *
+     * @param translucent whether the handed pass blends
+     * @param fragmentDiscard whether the handed pass alpha-tests
+     * @param shadowActive whether shadows are currently being rendered
+     * @return the reachable door pass (all six variants are reachable)
+     */
+    public static TerrainPass resolveHandedPass(boolean translucent, boolean fragmentDiscard,
+                                                boolean shadowActive) {
+        return withShadow(resolveHandedPass(translucent, fragmentDiscard), shadowActive);
+    }
+
+    /** @return whether the pass is a cutout (alpha-tested) variant */
+    public static boolean isCutout(TerrainPass pass) {
+        return pass == TerrainPass.TERRAIN_CUTOUT || pass == TerrainPass.SHADOW_CUTOUT;
     }
 
     /** @return whether the pass is a shadow-map pass */
@@ -178,6 +244,72 @@ public final class TerrainPipelineDoor {
             return DoorDecision.fallback(compile.passLabel(), compile.targetLabel(), problems.get(0));
         }
         return compile;
+    }
+
+    /**
+     * Whether the descriptor gate can render a verdict at all. The gate runs only when
+     * both the pack reflection and the layer-provided bindings are known; otherwise the
+     * caller keeps the compile decision and records {@link #descriptorGateSkipReason}.
+     *
+     * @param reflection reflected pack shader metadata (may be {@code null})
+     * @param provided bindings the descriptor layer provides (may be {@code null})
+     * @return {@code true} when a strict render decision can be computed
+     */
+    public static boolean isDescriptorGateApplicable(ShaderReflection reflection,
+                                                     List<DescriptorContractValidator.BindingSpec> provided) {
+        return reflection != null && provided != null;
+    }
+
+    /**
+     * Explains why the descriptor gate was skipped (empty when it was not skipped).
+     *
+     * @param reflection reflected pack shader metadata (may be {@code null})
+     * @param provided bindings the descriptor layer provides (may be {@code null})
+     * @return the skip reason, or {@code ""} when the gate is applicable
+     */
+    public static String descriptorGateSkipReason(ShaderReflection reflection,
+                                                  List<DescriptorContractValidator.BindingSpec> provided) {
+        if (reflection == null) {
+            return "descriptor gate skipped: no reflection (terrain program not reflected)";
+        }
+        if (provided == null) {
+            return "descriptor gate skipped: no provided descriptor bindings";
+        }
+        return "";
+    }
+
+    /**
+     * Runtime render-path decision: the compile linkage dominates, then the descriptor
+     * gate rules whenever it can. Unlike strict {@link #decideRender}, unknown gate
+     * inputs (no reflection, no provided bindings) keep the compile verdict instead of
+     * refusing the pack path: at label time the layer may simply not have reported yet,
+     * and that absence is recorded via {@link #descriptorGateSkipReason}, not hidden.
+     * An incomplete reflection is untrustworthy partial data and refuses the pack path
+     * with an exact reason.
+     *
+     * @param pass the handed terrain pass
+     * @param linkedVirtualProgramId linked virtual program id, or {@code <= 0} when none
+     * @param reflection reflected pack metadata (may be {@code null})
+     * @param stageFlags stage bits consuming the resources
+     * @param provided provided descriptor bindings (may be {@code null})
+     * @return pack decision only when linked, complete, and descriptor-validated
+     */
+    public static DoorDecision decideRenderLenient(TerrainPass pass, int linkedVirtualProgramId,
+                                                   ShaderReflection reflection, long stageFlags,
+                                                   List<DescriptorContractValidator.BindingSpec> provided) {
+        DoorDecision compile = decideCompile(pass, linkedVirtualProgramId);
+        if (!compile.usePackPipeline()) {
+            return compile;
+        }
+        if (reflection == null || provided == null) {
+            return compile;
+        }
+        if (!reflection.isComplete()) {
+            return DoorDecision.fallback(compile.passLabel(), compile.targetLabel(),
+                    "[" + displayPass(compile.passLabel()) + "] pack descriptor swap refused:"
+                            + " reflection incomplete (terrain program not trustworthy)");
+        }
+        return decideRender(pass, linkedVirtualProgramId, reflection, stageFlags, provided);
     }
 
     /**

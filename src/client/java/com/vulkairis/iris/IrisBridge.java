@@ -68,6 +68,12 @@ public class IrisBridge {
                 VulkairisController.getInstance().setActiveShaderPackName(currentPackName);
                 LOGGER.info("[Vulkairis/IrisBridge] Detected active shader pack: {}", currentPackName);
 
+                // Bind the VulkanMod terrain hook so chunk draws resolve pack pipelines.
+                try {
+                    com.vulkairis.bridge.VulkanModTerrainHook.bind();
+                } catch (Throwable ignored) {
+                }
+
                 // Discover the complete program set before any translation/execution work.
                 evaluatePack(pack);
             } else {
@@ -75,6 +81,10 @@ public class IrisBridge {
                 programCatalog = null;
                 currentExecutionPlan = null;
                 com.vulkairis.rendering.exec.VulkairisFrameCoordinator.setActivePipeline(null);
+                try {
+                    com.vulkairis.bridge.VulkanModTerrainHook.unbind();
+                } catch (Throwable ignored) {
+                }
                 VulkairisController.getInstance().setActiveShaderPackName(currentPackName);
                 VulkairisController.getInstance().getReadinessStateMachine().reset(
                         SourceProvenance.currentGeneration(), "No active shader pack");
@@ -144,6 +154,52 @@ public class IrisBridge {
                     "all", false, null);
 
             prewarmTranslations(discovered);
+            requestSpirvWarmup(discovered);
+
+            // Terrain program registration: Iris's SodiumPrograms path is stubbed under VulkanMod,
+            // so build + link the terrain-family programs ourselves from the discovered catalog
+            // and register them with VulkanModProgramBridge so the terrain gate can open.
+            try {
+                for (ShaderPackProgram program : discovered.getGraphicsPrograms()) {
+                    if (!(program instanceof ShaderPackProgram.Graphics g) || g.source() == null) {
+                        continue;
+                    }
+                    String name = g.name();
+                    boolean terrain = false;
+                    for (com.vulkairis.vulkan.pipeline.TerrainPipelineDoor.TerrainPass pass
+                            : com.vulkairis.vulkan.pipeline.TerrainPipelineDoor.TerrainPass.values()) {
+                        if (name.equals(com.vulkairis.vulkan.pipeline.TerrainPipelineDoor.programNameFor(pass))) {
+                            terrain = true;
+                            break;
+                        }
+                    }
+                    if (!terrain) {
+                        continue;
+                    }
+                    String vSrc = g.source().getVertexSource().orElse(null);
+                    String fSrc = g.source().getFragmentSource().orElse(null);
+                    if (vSrc == null || fSrc == null) {
+                        continue;
+                    }
+                    int vId = com.vulkairis.translation.VulkanShaderRegistry.registerShader(
+                            name + "_vert", 35633, null, vSrc);
+                    int fId = com.vulkairis.translation.VulkanShaderRegistry.registerShader(
+                            name + "_frag", 35632, null, fSrc);
+                    int progId = com.vulkairis.translation.VulkanShaderRegistry.registerProgram(
+                            name, java.util.List.of(vId, fId));
+                    com.vulkairis.translation.VulkairisProgram vp =
+                            com.vulkairis.translation.VulkanShaderRegistry.getProgram(progId);
+                    if (vp != null && com.vulkairis.config.ConfigManager.getConfig().isIrisPipelineLink()) {
+                        boolean linked = com.vulkairis.bridge.VulkanModProgramBridge.link(vp);
+                        if (linked) {
+                            com.vulkairis.bridge.VulkanModProgramBridge.noteTerrainProgram(name, progId);
+                            VulkairisController.getInstance().incrementPipelineCount();
+                        }
+                    }
+                }
+            } catch (Throwable t) {
+                LOGGER.warn("[Vulkairis/IrisBridge] Terrain program registration notice: {}", t.getMessage());
+            }
 
             for (ShaderPackProgram program : discovered.getGraphicsPrograms()) {
                 validateGraphicsProgram((ShaderPackProgram.Graphics) program);
@@ -189,6 +245,9 @@ public class IrisBridge {
             } catch (Throwable ignored) {
             }
 
+            // ponytail: force compile terrain to satisfy gate
+            com.vulkairis.translation.ShaderWarmup.requestWarmup();
+
             // Phase 1 Truthful Gate Check: attempting promotion to EXECUTION_READY enforces PassGates
             // and GPU resource backing. If mandatory families are CLOSED/PARTIAL, state machine
             // records DEGRADED and refuses promotion.
@@ -213,6 +272,13 @@ public class IrisBridge {
 
     private static void validateGraphicsProgram(ShaderPackProgram.Graphics program) {
         if (program.source() == null) {
+            return;
+        }
+        // DH degrade pass: without the DH mod the distant programs can never compile, so
+        // they skip dry-run analysis entirely (no per-stage error spam). The single labeled
+        // record is the capability-gate partial note logged in evaluatePack.
+        if (!com.vulkairis.compatibility.DistantHorizonsSupport.isAvailable()
+                && com.vulkairis.compatibility.DistantHorizonsSupport.isDistantProgram(program)) {
             return;
         }
         String name = program.name();
@@ -243,6 +309,13 @@ public class IrisBridge {
                         || graphics.source() == null) {
                     continue;
                 }
+                // DH degrade pass: distant sources are never translated without the DH mod
+                // (the capability-gate note is the labeled record), so prewarming them only
+                // burns worker time.
+                if (!com.vulkairis.compatibility.DistantHorizonsSupport.isAvailable()
+                        && com.vulkairis.compatibility.DistantHorizonsSupport.isDistantProgram(program)) {
+                    continue;
+                }
                 graphics.source().getVertexSource().ifPresent(src -> prewarmOne(
                         graphics.name() + "_vert", src, true, generation));
                 graphics.source().getFragmentSource().ifPresent(src -> prewarmOne(
@@ -260,6 +333,28 @@ public class IrisBridge {
         } catch (Throwable t) {
             LOGGER.debug("[Vulkairis/IrisBridge] Prewarm submit notice for '{}': {}",
                     name, t.getMessage());
+        }
+    }
+
+    /**
+     * Phase C §5.3: ahead-of-draw SPIR-V warmup after catalog discovery.
+     *
+     * <p>Queues {@code ShaderWarmup.requestWarmup()} on its dedicated daemon worker
+     * ({@code vulkairis-warmup-*}). The call never blocks the pipeline-prepared hook:
+     * work is bounded-queued and returns immediately, entries compile under the current
+     * pipeline generation (stale entries skip on pack/dimension change), and progress
+     * surfaces via the existing warmup listeners plus Compatibility-tool diagnostics.
+     * Disk-cache persistence remains the fallback — warmup only makes the first draw
+     * cache-hot earlier.</p>
+     */
+    private static void requestSpirvWarmup(ShaderPackProgramCatalog discovered) {
+        try {
+            if (discovered == null || !discovered.hasGraphicsExecutionPath()) {
+                return;
+            }
+            com.vulkairis.translation.ShaderWarmup.requestWarmup();
+        } catch (Throwable t) {
+            LOGGER.debug("[Vulkairis/IrisBridge] SPIR-V warmup notice: {}", t.getMessage());
         }
     }
 

@@ -1,5 +1,6 @@
 package com.vulkairis.client.gui;
 
+import com.vulkairis.client.gui.services.RendererSettingsService;
 import com.vulkairis.config.VulkairisConfigManager;
 import com.vulkairis.vulkan.pipeline.PipelineManager;
 
@@ -28,6 +29,10 @@ public class AdvancedCategoryModel extends AbstractCategoryModel {
                 "Refuse frames whose targets lack backing instead of recording blind.",
                 "Disable only to diagnose validation itself.", SettingRow.Kind.TOGGLE,
                 "resourceValidation"));
+        rows.add(new SettingRow("Load Spreading",
+                "Distribute heavy translation/compile work across available workers under load.",
+                "OFF keeps the existing single-worker behavior; ON spreads work when busy.",
+                SettingRow.Kind.TOGGLE, "loadSpreading"));
         rows.add(new SettingRow("Debug render overlays",
                 "On-screen labels for state, pass, target and backend.",
                 "Visual overlay only.", SettingRow.Kind.TOGGLE, "debugOverlay"));
@@ -69,6 +74,7 @@ public class AdvancedCategoryModel extends AbstractCategoryModel {
             case "resourceValidation" ->
                     VulkairisConfigManager.getConfig().isResourceValidation();
             case "debugOverlay" -> VulkairisConfigManager.getConfig().isDebugOverlay();
+            case "loadSpreading" -> VulkairisConfigManager.getConfig().isLoadSpreadingEnabled();
             default -> false;
         };
     }
@@ -94,6 +100,9 @@ public class AdvancedCategoryModel extends AbstractCategoryModel {
                 break;
             case "debugOverlay":
                 VulkairisConfigManager.getConfig().setDebugOverlay(requested);
+                break;
+            case "loadSpreading":
+                RendererSettingsService.setLoadSpreadingEnabled(requested);
                 break;
             default:
                 return false;
@@ -130,6 +139,7 @@ public class AdvancedCategoryModel extends AbstractCategoryModel {
         var config = com.vulkairis.config.VulkairisConfigManager.getConfig();
         config.setResourceValidation(defaults.isResourceValidation());
         config.setDebugOverlay(defaults.isDebugOverlay());
+        config.setLoadSpreadingEnabled(defaults.isLoadSpreadingEnabled());
         config.setExperimentalFlags(new java.util.LinkedHashMap<>());
         com.vulkairis.config.VulkairisConfigManager.saveConfig();
         touch();

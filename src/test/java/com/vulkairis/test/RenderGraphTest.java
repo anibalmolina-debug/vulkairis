@@ -8,6 +8,8 @@ import com.vulkairis.rendergraph.RenderResource;
 import com.vulkairis.rendergraph.ResourceTransition;
 import com.vulkairis.rendergraph.ResourceUsage;
 import com.vulkairis.rendergraph.ShaderStage;
+import com.vulkairis.rendering.exec.CompositeChainPlanner;
+import com.vulkairis.resource.RenderTargetRegistry;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -296,5 +298,36 @@ public class RenderGraphTest {
         Assertions.assertTrue(dump.contains("gbuffers"), dump);
         Assertions.assertTrue(dump.contains("gbuffer_color"), dump);
         Assertions.assertTrue(dump.contains("gbuffer_depth"), dump);
+    }
+
+    /**
+     * Complementary-style ping-pong reuse must compile in declaration order instead of
+     * fabricating a cycle. The pack ships {@code composite, composite1, composite3,
+     * composite4, composite5, composite6, final} (note the skipped {@code composite2}),
+     * so the two alternating intermediates are each written, sampled, then overwritten.
+     * Every overwrite is a backed write-after-read (the sampler observed a produced value),
+     * which orders reader-before-later-writer; the old inverted edge rejected this linear
+     * chain as {@code composite1 -> composite3 -> composite1} and every pack pass was lost
+     * with it. Regression for the runClient
+     * {@code PackRenderPipeline.buildFromPlan} failure.
+     */
+    @Test
+    public void testPingPongReuseWithSkippedIndexCompilesInOrder() {
+        List<String> postPrograms = List.of(
+                "composite", "composite1", "composite3", "composite4",
+                "composite5", "composite6", "final");
+        List<CompositeChainPlanner.CompositeStep> steps = CompositeChainPlanner.plan(
+                postPrograms,
+                RenderTargetRegistry.SCENE_COLOR,
+                RenderTargetRegistry.PING,
+                RenderTargetRegistry.PONG,
+                RenderTargetRegistry.FINAL);
+
+        RenderGraph graph = CompositeChainPlanner.toRenderGraph(steps);
+        CompiledRenderGraph compiled = graph.compile();
+
+        Assertions.assertEquals(postPrograms,
+                compiled.getExecutionOrder().stream().map(PassNode::name).toList(),
+                "no pack pass may be dropped or reordered to break a false cycle");
     }
 }

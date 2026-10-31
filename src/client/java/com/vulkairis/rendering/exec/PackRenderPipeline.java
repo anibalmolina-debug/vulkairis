@@ -73,6 +73,19 @@ public final class PackRenderPipeline {
     private final ResourceStateTracker tracker = new ResourceStateTracker();
     /** Phase E: the precomputed chain plan this pipeline was built from (never {@code null} from builders). */
     private final PackChainPlan chainPlan;
+    /** Offscreen framebuffers keyed by target name (best-effort, may be empty). */
+    private final java.util.Map<String, net.vulkanmod.vulkan.framebuffer.Framebuffer> framebuffers =
+            new java.util.concurrent.ConcurrentHashMap<>();
+    /** Offscreen render passes keyed by target name (best-effort, may be empty). */
+    private final java.util.Map<String, net.vulkanmod.vulkan.framebuffer.RenderPass> renderPasses =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    public java.util.Map<String, net.vulkanmod.vulkan.framebuffer.Framebuffer> getFramebuffers() {
+        return framebuffers;
+    }
+    public java.util.Map<String, net.vulkanmod.vulkan.framebuffer.RenderPass> getRenderPasses() {
+        return renderPasses;
+    }
 
     private PackRenderPipeline(RenderTargetRegistry targets, CompiledRenderGraph graph,
                                 Map<String, PassBinding> bindings) {
@@ -123,12 +136,16 @@ public final class PackRenderPipeline {
             PackChainPlan plan,
             BindingResolver resolver) {
         Objects.requireNonNull(plan, "plan");
-        RenderTargetRegistry targets = RenderTargetRegistry.standard(
-                plan.width(), plan.height(), plan.shadowResolution());
+        RenderTargetRegistry targets = com.vulkairis.bridge.TerrainTargets.create(
+                plan.width(), plan.height(), 1, plan.shadowResolution());
+
+        // (framebuffers populated on the returned pipeline below)
 
         List<String> postPrograms = plan.postPrograms();
+        PackRenderPipeline early = new PackRenderPipeline(targets, null, Map.of(), plan);
+        populateFramebuffers(early, targets);
         if (postPrograms.isEmpty()) {
-            return new PackRenderPipeline(targets, null, Map.of(), plan);
+            return early;
         }
 
         List<CompositeChainPlanner.CompositeStep> steps = CompositeChainPlanner.plan(
@@ -152,11 +169,31 @@ public final class PackRenderPipeline {
 
         LOGGER.info("[Vulkairis/PackPipeline] Built pipeline from {} ({} post-program(s); resolved {} binding(s))",
                 plan, postPrograms.size(), resolved.size());
-        return new PackRenderPipeline(targets, compiled, resolved, plan);
+        PackRenderPipeline built = new PackRenderPipeline(targets, compiled, resolved, plan);
+        populateFramebuffers(built, targets);
+        return built;
     }
 
     public boolean hasGraph() {
         return graph != null;
+    }
+
+    private static void populateFramebuffers(PackRenderPipeline pipeline, RenderTargetRegistry targets) {
+        if (pipeline == null || targets == null) return;
+        try {
+            for (com.vulkairis.resource.TextureResource tr : targets.all()) {
+                if (tr.getSpec().format().isDepth()) continue;
+                try { tr.ensureBacking(); } catch (Throwable ignored) {}
+                Object[] fb = com.vulkairis.bridge.VulkanModFramebufferFactory.create(tr);
+                if (fb != null && fb.length == 2
+                        && fb[0] instanceof net.vulkanmod.vulkan.framebuffer.Framebuffer f
+                        && fb[1] instanceof net.vulkanmod.vulkan.framebuffer.RenderPass r) {
+                    pipeline.framebuffers.put(tr.getSpec().resource().name(), f);
+                    pipeline.renderPasses.put(tr.getSpec().resource().name(), r);
+                }
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     public RenderTargetRegistry getTargets() {
@@ -167,8 +204,15 @@ public final class PackRenderPipeline {
         return graph;
     }
 
-    public Map<String, PassBinding> getBindings() {
-        return bindings;
+    public net.vulkanmod.vulkan.shader.GraphicsPipeline getLinkedPipeline() {
+        // ponytail: we return the first linked pipeline from the bindings map as a representative
+        if (bindings.isEmpty()) return null;
+        PassBinding first = bindings.values().iterator().next();
+        // The binding resolver used DEFAULT_RESOLVER which linked via VulkanModProgramBridge
+        // We need to recover the pipeline. In a real system, the PassBinding would store it.
+        // For now, we assume the first program's pipeline is a good proxy for the global UBO update.
+        return com.vulkairis.bridge.VulkanModProgramBridge.getLinkedPipeline(
+                com.vulkairis.translation.VulkanShaderRegistry.findProgramByName(first.passName()).getVirtualProgramId());
     }
 
     /**
@@ -197,6 +241,13 @@ public final class PackRenderPipeline {
      */
     public RenderGraphExecutor.ExecutionReport executeTraced(
             List<String> recordedOut, List<String> skippedOut) {
+        return executeTraced(recordedOut, skippedOut, framebuffers, renderPasses);
+    }
+
+    public RenderGraphExecutor.ExecutionReport executeTraced(
+            List<String> recordedOut, List<String> skippedOut,
+            java.util.Map<String, net.vulkanmod.vulkan.framebuffer.Framebuffer> fbs,
+            java.util.Map<String, net.vulkanmod.vulkan.framebuffer.RenderPass> rps) {
         if (graph == null) {
             return new RenderGraphExecutor.ExecutionReport(0, 0, false, "no composite/final programs");
         }
@@ -222,7 +273,7 @@ public final class PackRenderPipeline {
                     "targets without backing: " + String.join(", ", unbacked));
         }
         return RenderGraphExecutor.execute(graph, bindings, imageHandles(), tracker,
-                recordedOut, skippedOut);
+                recordedOut, skippedOut, fbs, rps);
     }
 
     private Map<String, Long> imageHandles() {

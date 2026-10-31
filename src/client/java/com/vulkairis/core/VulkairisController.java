@@ -25,9 +25,13 @@ public class VulkairisController {
     private volatile String lastCompileError = "none";
     /** Phase 1: last program-link failure summary, or "none". */
     private volatile String lastLinkError = "none";
-    /** Phase 1: currently executing Iris pass, or "none" (populated as pass routing lands). */
+    /** Phase 1: currently executing Iris pass, or "none" (populated as pass routing lands).
+     * Canonical per-frame pack pass evidence: the terrain door writes the effective pack
+     * pass label here on every handed-pass replacement (plus a StageDiagnostics line),
+     * mirrored into RenderStateTracker for the plan's §6.5/§8 acceptance. */
     private volatile String activePass = "none";
-    /** Phase 1: current render target, or "none" (populated as target work lands). */
+    /** Phase 1: current render target, or "none" (populated as target work lands).
+     * Canonical per-frame pack target evidence alongside {@link #activePass}. */
     private volatile String currentTarget = "none";
     /** Phase 1: a resource reload / pack change is waiting to rebuild pipelines. */
     private volatile boolean pendingReload = false;
@@ -234,6 +238,10 @@ public class VulkairisController {
         return activePass;
     }
 
+    /**
+     * Records the effective pack pass label for per-frame evidence. Canonical store;
+     * the terrain door also mirrors the label into RenderStateTracker.
+     */
     public synchronized void setActivePass(String activePass) {
         this.activePass = (activePass != null) ? activePass : "none";
     }
@@ -242,6 +250,10 @@ public class VulkairisController {
         return currentTarget;
     }
 
+    /**
+     * Records the effective pack target label for per-frame evidence. Canonical store;
+     * the terrain door also mirrors the label into RenderStateTracker.
+     */
     public synchronized void setCurrentTarget(String currentTarget) {
         this.currentTarget = (currentTarget != null) ? currentTarget : "none";
     }

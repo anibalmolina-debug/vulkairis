@@ -4,15 +4,29 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.vulkairis.core.ShaderLifecycleState;
 import com.vulkairis.diagnostics.StageDiagnostics;
+import com.vulkairis.iris.IrisBridge;
+import com.vulkairis.iris.SourceProvenance;
+import com.vulkairis.translation.LegacyGlsl;
+import com.vulkairis.translation.ProgramTranslator;
 import com.vulkairis.translation.ShaderReflection;
 import com.vulkairis.translation.ShaderTranslator;
+import com.vulkairis.vulkan.descriptor.DescriptorContractValidator;
+import com.vulkairis.vulkan.descriptor.DescriptorSetLayoutBuilder;
+import com.vulkairis.vulkan.pipeline.TerrainVertexContract;
+import com.vulkairis.translation.ShaderTranslator;
+import com.vulkairis.translation.UnifiedTranslationService;
+import com.vulkairis.translation.VulkanShaderRegistry;
 import com.vulkairis.translation.VulkairisProgram;
 import com.vulkairis.translation.VulkairisShader;
 import com.vulkairis.backend.vulkanmod.VulkanBackendAdapter;
 import net.vulkanmod.vulkan.shader.GraphicsPipeline;
 import net.vulkanmod.vulkan.shader.Pipeline;
 import net.vulkanmod.vulkan.shader.PipelineConfig;
+import net.vulkanmod.vulkan.shader.descriptor.ManualUBO;
+import net.vulkanmod.vulkan.shader.descriptor.UBO;
 import net.vulkanmod.vulkan.shader.SPIRVUtils;
+import net.vulkanmod.vulkan.shader.descriptor.ImageDescriptor;
+import net.vulkanmod.vulkan.shader.descriptor.UBO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +79,31 @@ public final class VulkanModProgramBridge {
      * declares. Ordered smallest (fewest elements) first so the first format that contains every
      * required attribute name wins.
      *
+     * <p>Program-family roots (plan &#167;4.3 &#167;3.7) and the format that covers each:</p>
+     * <ul>
+     *   <li>Fullscreen/composite procedural passes: no vertex inputs at all (attribute-less,
+     *       {@code gl_VertexID}-driven; see {@link #isProceduralFullscreenInputs}) or the
+     *       Iris composite root ({@code iris_Position} + {@code iris_UV}, normalized to
+     *       {@code Position} + {@code UV0} by {@code ShaderTranslator}) &mdash; covered by
+     *       {@code POSITION} when input-less, {@code POSITION_TEX} otherwise. The pipeline
+     *       still binds a real format (VulkanMod requires one); a shader that consumes no
+     *       inputs simply ignores the provided attributes.</li>
+     *   <li>Terrain ({@code BLOCK}-class: {@code Position/Color/UV0/UV2/Normal}) &mdash;
+     *       covered by {@code BLOCK}.</li>
+     *   <li>Entity ({@code Position/UV0} plus {@code gl_Color}/{@code gl_Normal} legacy
+     *       attribs via {@link #LEGACY_ATTRIB_ALIASES}) &mdash; covered by
+     *       {@code POSITION_TEX_COLOR_NORMAL}; full overlay data by {@code NEW_ENTITY}.</li>
+     *   <li>Sky ({@code Position} only) &mdash; covered by {@code POSITION}.</li>
+     *   <li>Cloud/fixed-function ({@code ftransform()}/{@code gl_MultiTexCoord*} legacy
+     *       attribs via {@link #LEGACY_ATTRIB_ALIASES}) &mdash; covered through the same
+     *       alias map, never a guaranteed {@code failLink}.</li>
+     * </ul>
+     *
+     * <p>Depth is orthogonal to this table: every format here feeds a forward-Z pipeline
+     * (Vulkan {@code [0, 1]}, clear {@code 1.0}, compare {@code LESS_OR_EQUAL}); format
+     * selection never alters depth semantics and shadow clear values are owned by the
+     * target layer, not by this selection.</p>
+     *
      * <p>Element compositions verified against the 1.21.1 {@code DefaultVertexFormat}
      * (Blaze3D) class in this dev environment: {@code POSITION=[Position]};
      * {@code POSITION_COLOR=[Position,Color]}; {@code POSITION_TEX=[Position,UV0]};
@@ -95,6 +134,46 @@ public final class VulkanModProgramBridge {
             DefaultVertexFormat.PARTICLE,
             DefaultVertexFormat.NEW_ENTITY);
 
+    /**
+     * Legacy fixed-function vertex attributes (as introduced by
+     * {@code LegacyGlsl}: {@code vulkairis_Vertex} from {@code gl_Vertex}/
+     * {@code ftransform()}, and so on) mapped onto the vanilla attribute that
+     * carries the same per-vertex data.
+     *
+     * <p>Explicit reason per entry (why sharing the vanilla slot is sound):</p>
+     * <ul>
+     *   <li>{@code vulkairis_Vertex} (vec4 object-space position) to {@code Position}
+     *       (vec3 float): the same mesh position; a vec4 input fed by a vec3 buffer
+     *       defaults its {@code w} to {@code 1}, matching homogeneous coords.</li>
+     *   <li>{@code vulkairis_Normal} to {@code Normal}: both vec3 object-space normals,
+     *       exact match.</li>
+     *   <li>{@code vulkairis_Color} to {@code Color}: both vec4 RGBA (vanilla
+     *       {@code Color} is normalized bytes read as float vec4).</li>
+     *   <li>{@code vulkairis_MultiTexCoord0} (vec4) to {@code UV0} (vec2 float base
+     *       texture): unit 0 is the base texture in the compatibility profile; a vec4
+     *       input fed by a vec2 buffer defaults its {@code zw} to {@code (0, 1)}.</li>
+     *   <li>{@code vulkairis_MultiTexCoord1} (vec4) to {@code UV2} (ivec2 short
+     *       lightmap): unit 1 is the lightmap in compatibility packs and vanilla
+     *       {@code UV2} is the lightmap slot (overlay {@code UV1} has no legacy
+     *       equivalent). Known limitation, documented not hidden: {@code UV2} is an
+     *       integer buffer while the legacy varying is float, so exact float
+     *       conversion ({@code vec2(UV2)}) is future shader-side work; the alias still
+     *       unblocks format selection and location assignment so fixed-function packs
+     *       are no longer a guaranteed {@code failLink}.</li>
+     * </ul>
+     *
+     * <p>{@link #chooseVertexFormat} resolves through this map before coverage checks,
+     * and {@link #buildVertexInputLocations} assigns each legacy name the same location
+     * as its vanilla counterpart, so the SPIR-V input lands on the slot the pipeline's
+     * vertex input state already provides.</p>
+     */
+    public static final Map<String, String> LEGACY_ATTRIB_ALIASES = Map.of(
+            "vulkairis_Vertex", "Position",
+            "vulkairis_Normal", "Normal",
+            "vulkairis_Color", "Color",
+            "vulkairis_MultiTexCoord0", "UV0",
+            "vulkairis_MultiTexCoord1", "UV2");
+
     private static final Map<Integer, GraphicsPipeline> LINKED = new ConcurrentHashMap<>();
     private static final AtomicInteger CONSECUTIVE_FAILURES = new AtomicInteger();
     private static final int MAX_FAILURES = 3;
@@ -122,26 +201,36 @@ public final class VulkanModProgramBridge {
             return false;
         }
 
-        VulkairisShader vert = program.getVertexShader();
-        VulkairisShader frag = program.getFragmentShader();
-        if (vert == null || frag == null) {
+        VulkairisShader vert0 = program.getVertexShader();
+        VulkairisShader frag0 = program.getFragmentShader();
+        if (vert0 == null || frag0 == null) {
             return failLink(program.getName(), "missing vertex or fragment stage");
         }
-        if (vert.glslSource() == null || frag.glslSource() == null) {
+        if (vert0.glslSource() == null || frag0.glslSource() == null) {
             return failLink(program.getName(), "missing GLSL source");
         }
 
         try {
-            // preprocessGlsl emits the injected VulkairisUniformBlock at binding 100, which VulkanMod
-            // indexes out of range (its descriptor array is sized buffers+images but indexed by the
-            // raw binding number). Compact every descriptor into a dense 0..N-1 range before handing
-            // the source to VulkanMod, using one shared map so both stages agree on bindings.
-            String vertSrc = ShaderTranslator.normalizeTypesForVulkanMod(
-                    ShaderTranslator.preprocessGlsl(vert.glslSource(), true, vert.getName()));
-            String fragSrc = ShaderTranslator.normalizeTypesForVulkanMod(
-                    ShaderTranslator.preprocessGlsl(frag.glslSource(), false, frag.getName()));
+            // Union-first driver path (plan §4 gap B-1): the base GLSL comes from the canonical
+            // program-together translation (one shared VulkairisUniformBlock over both stages),
+            // never from per-stage preprocessing. The dense 0..N-1 assignment below is the single
+            // shared contract (ShaderTranslator.buildUnifiedBindingMap: injected block first,
+            // then first-seen vertex->fragment).
+            DriverSources base = resolveDriverSources(program);
+            VulkairisShader vert = base.vert() != null ? base.vert() : vert0;
+            VulkairisShader frag = base.frag() != null ? base.frag() : frag0;
+            String vertSrc = base.vertGlsl();
+            String fragSrc = base.fragGlsl();
+            if (vertSrc == null || fragSrc == null) {
+                return failLink(program.getName(), "missing GLSL source");
+            }
 
-            Map<String, Integer> bindings = buildUnifiedBindingMap(vertSrc, fragSrc);
+            // The VulkanMod path needs explicit dense bindings: its descriptor array is sized
+            // buffers+images but indexed by the raw binding number, so preprocessGlsl's binding
+            // 100 (and any Iris sampler bindings) would index out of range. Compact every
+            // descriptor into a dense 0..N-1 range before handing the source to VulkanMod,
+            // using one shared map so both stages agree on bindings.
+            Map<String, Integer> bindings = ShaderTranslator.buildUnifiedBindingMap(vertSrc, fragSrc);
             // remapDescriptorBindings already routes opaque declarations through
             // ensureDescriptorBindings; the explicit second pass is an idempotent belt-and-braces
             // guarantee that every sampler/image in the source handed to setShaderSrc carries the
@@ -165,7 +254,52 @@ public final class VulkanModProgramBridge {
             // so pick a vertex format that covers the shader's inputs, then inject locations that
             // agree with that format and with the shared varying interface between the stages.
             List<String> requiredInputs = ShaderTranslator.collectVertexInputNames(vertRemapped);
-            VertexFormat vertexFormat = chooseVertexFormat(requiredInputs);
+            // Terrain programs must use VulkanMod's compressed terrain vertex format so the
+            // pipeline's vertex input state matches the buffers VulkanMod actually feeds.
+            VertexFormat vertexFormat = null;
+            try {
+                boolean terrain = false;
+                String pname = program.getName();
+                if (pname != null) {
+                    for (com.vulkairis.vulkan.pipeline.TerrainPipelineDoor.TerrainPass pass
+                            : com.vulkairis.vulkan.pipeline.TerrainPipelineDoor.TerrainPass.values()) {
+                        if (pname.equals(com.vulkairis.vulkan.pipeline.TerrainPipelineDoor.programNameFor(pass))) {
+                            terrain = true;
+                            break;
+                        }
+                    }
+                }
+                if (terrain) {
+                    VertexFormat compressed = null;
+                    try {
+                        Class<?> cvf = Class.forName("net.vulkanmod.render.vertex.CustomVertexFormat");
+                        java.lang.reflect.Field f = cvf.getField("COMPRESSED_TERRAIN");
+                        Object v = f.get(null);
+                        if (v instanceof VertexFormat vf) {
+                            compressed = vf;
+                        }
+                    } catch (Throwable ignored) {
+                    }
+                    if (compressed != null) {
+                        java.util.Set<String> names = new java.util.HashSet<>(compressed.getElementAttributeNames());
+                        boolean covered = true;
+                        for (String in : requiredInputs) {
+                            String resolved = LEGACY_ATTRIB_ALIASES.getOrDefault(in, in);
+                            if (!names.contains(resolved)) {
+                                covered = false;
+                                break;
+                            }
+                        }
+                        if (covered) {
+                            vertexFormat = compressed;
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+            if (vertexFormat == null) {
+                vertexFormat = chooseVertexFormat(requiredInputs);
+            }
             if (vertexFormat == null) {
                 return failLink(program.getName(),
                         "no DefaultVertexFormat covers vertex inputs " + requiredInputs
@@ -201,6 +335,24 @@ public final class VulkanModProgramBridge {
                                 + " gap that VulkanMod would index out of range");
             }
             builder.applyConfig(config);
+
+            // Convert every UBO descriptor into a ManualUBO so Vulkairis owns writing its
+            // std140 contents (uploadUniforms) instead of relying on VulkanMod's uniform
+            // suppliers, which only know OptiFine's legacy uniform names.
+            try {
+                java.util.List<UBO> ubos = builder.getUBOs();
+                for (int i = 0; i < ubos.size(); i++) {
+                    UBO ubo = ubos.get(i);
+                    if (ubo instanceof ManualUBO) {
+                        continue;
+                    }
+                    int size = Math.max(ubo.getSize(), 16);
+                    ManualUBO manual = new ManualUBO(ubo.getBinding(), ubo.getStages(),
+                            (size + 3) / 4);
+                    ubos.set(i, manual);
+                }
+            } catch (Throwable ignored) {
+            }
 
             GraphicsPipeline pipeline;
             try {
@@ -246,6 +398,136 @@ public final class VulkanModProgramBridge {
     }
 
     /**
+     * Driver base sources for {@link #link}: the single place where the VulkanMod-bound path
+     * obtains its pre-remap GLSL.
+     *
+     * @param vertGlsl vertex-stage base GLSL (union-translated when {@code unified})
+     * @param fragGlsl fragment-stage base GLSL (union-translated when {@code unified})
+     * @param vert     vertex shader to use for reflection (freshly re-registered when the
+     *                 unified service path recompiled, otherwise the program's own shader)
+     * @param frag     fragment shader to use for reflection (same freshness rule)
+     * @param unified  whether both stages share the canonical program-together union block;
+     *                 {@code false} only when every union attempt failed and the legacy
+     *                 per-stage preprocessing fallback was used
+     */
+    public record DriverSources(String vertGlsl, String fragGlsl,
+                                VulkairisShader vert, VulkairisShader frag, boolean unified) {
+    }
+
+    /**
+     * Resolves the driver base sources for a program, union-first (plan §4 gap B-1).
+     *
+     * <ol>
+     *   <li>Canonical path: the {@link UnifiedTranslationService} outcome for this program at
+     *       the current {@link SourceProvenance} generation (reused when
+     *       {@code ProgramCreatorMixin} already translated, computed otherwise). Both stages
+     *       then share one identical {@code VulkairisUniformBlock}; generation gating comes
+     *       from the service outcome key, so a stale generation is never reused.</li>
+     *   <li>Direct fallback: {@link ProgramTranslator#translate} over the attached shaders'
+     *       current sources at the current generation (union without recompilation), for
+     *       programs linked without the mixin path.</li>
+     *   <li>Legacy fallback: per-stage {@code preprocessGlsl} (pre-union behaviour), only
+     *       when every union attempt failed.</li>
+     * </ol>
+     *
+     * <p>Device-free: performs translation only, never touches the Vulkan device, so tests can
+     * exercise the union identity the driver links against. Iris owns pack content
+     * (include expansion reads Iris pack files at the current generation); VulkanMod owns
+     * submission (downstream dense bindings, locations and pipeline creation).</p>
+     *
+     * @param program the program to resolve; its attached shaders must be present
+     * @return the base sources plus the shaders to reflect against
+     */
+    public static DriverSources resolveDriverSources(VulkairisProgram program) {
+        VulkairisShader vert = program.getVertexShader();
+        VulkairisShader frag = program.getFragmentShader();
+
+        // Canonical path: the service already runs the program-together translation (union
+        // block, union varyings, legacy builtins, fragment outputs) and recompiles each stage
+        // from the unified GLSL with fresh reflection. The mixin calls it just before link(),
+        // so this is usually a generation-gated cache hit, not a second compile.
+        try {
+            long generation = SourceProvenance.currentGeneration();
+            UnifiedTranslationService.TranslationOutcome outcome =
+                    UnifiedTranslationService.getOutcome(program.getName(), generation);
+            if (outcome == null || !outcome.succeeded()) {
+                outcome = UnifiedTranslationService.translateProgram(
+                        program.getName(), program.getAttachedShaderIds());
+            }
+            if (outcome != null && outcome.succeeded() && outcome.program() != null) {
+                ProgramTranslator.TranslatedStage vertStage =
+                        outcome.program().stages().get("VERTEX");
+                ProgramTranslator.TranslatedStage fragStage =
+                        outcome.program().stages().get("FRAGMENT");
+                if (vertStage != null && fragStage != null
+                        && vertStage.glsl() != null && fragStage.glsl() != null) {
+                    // The service re-registered both shaders with unified GLSL and fresh
+                    // reflection under the same virtual ids; re-resolve so the descriptor
+                    // config below sizes the union block from the union reflection.
+                    program.resolveAttachedShaders();
+                    VulkairisShader freshVert = program.getVertexShader();
+                    VulkairisShader freshFrag = program.getFragmentShader();
+                    if (freshVert != null && freshFrag != null) {
+                        vert = freshVert;
+                        frag = freshFrag;
+                    }
+                    return new DriverSources(
+                            vertStage.glsl(), fragStage.glsl(), vert, frag, true);
+                }
+            }
+        } catch (Throwable ignored) {
+            // Fall through to the direct union attempt below.
+        }
+
+        // Direct union fallback: same canonical translator, no recompilation. Covers programs
+        // linked without the mixin path (or whose service recompile failed while the pure
+        // translation still succeeds); the VulkanMod path recompiles anyway with its own
+        // dense bindings and locations.
+        try {
+            String packId = "unknown-pack";
+            try {
+                String current = IrisBridge.getCurrentPackName();
+                if (current != null && !current.isBlank()) {
+                    packId = current;
+                }
+            } catch (Throwable ignored) {
+            }
+            long generation = SourceProvenance.currentGeneration();
+            List<ProgramTranslator.StageUnit> units = List.of(
+                    new ProgramTranslator.StageUnit("VERTEX",
+                            vert != null ? vert.glslSource() : "", vert != null ? vert.getName() : "program.vsh"),
+                    new ProgramTranslator.StageUnit("FRAGMENT",
+                            frag != null ? frag.glslSource() : "", frag != null ? frag.getName() : "program.fsh"));
+            ProgramTranslator.TranslatedProgram translated =
+                    ProgramTranslator.translate(program.getName(), units, packId, generation);
+            if (translated != null) {
+                ProgramTranslator.TranslatedStage vertStage = translated.stages().get("VERTEX");
+                ProgramTranslator.TranslatedStage fragStage = translated.stages().get("FRAGMENT");
+                if (vertStage != null && fragStage != null
+                        && vertStage.glsl() != null && fragStage.glsl() != null) {
+                    return new DriverSources(
+                            vertStage.glsl(), fragStage.glsl(), vert, frag, true);
+                }
+            }
+        } catch (Throwable ignored) {
+            // Fall through to the legacy per-stage path below.
+        }
+
+        // Legacy fallback (pre-union behaviour): per-stage preprocessing. Only reached when
+        // every union attempt failed; the stages may then carry differing uniform blocks that
+        // still share dense binding 0 until the pack is fixed.
+        String vertSrc = ShaderTranslator.normalizeTypesForVulkanMod(
+                ShaderTranslator.preprocessGlsl(
+                        vert != null ? vert.glslSource() : null, true,
+                        vert != null ? vert.getName() : null));
+        String fragSrc = ShaderTranslator.normalizeTypesForVulkanMod(
+                ShaderTranslator.preprocessGlsl(
+                        frag != null ? frag.glslSource() : null, false,
+                        frag != null ? frag.getName() : null));
+        return new DriverSources(vertSrc, fragSrc, vert, frag, false);
+    }
+
+    /**
      * Records a link failure, warns only for the first few programs, then disables the feature for
      * the session so a pack that the VulkanMod SPIR-V compiler cannot handle does not flood the log.
      * The originating throwable is logged with its full stack trace so future failures are
@@ -278,39 +560,15 @@ public final class VulkanModProgramBridge {
     }
 
     /**
-     * Builds one unified, deterministic descriptor assignment from the descriptors actually declared
-     * in both (already preprocessed) stages. Order is: the injected {@link ShaderTranslator#UNIFORM_BLOCK_NAME}
-     * first (if either stage declares it), then every other descriptor in first-seen declaration order
-     * (vertex stage before fragment stage). Values are exactly {@code 0..N-1}.
-     *
-     * <p>Never returns {@code null}: an empty program simply yields an empty map.</p>
-     */
-    private static Map<String, Integer> buildUnifiedBindingMap(String vertSrc, String fragSrc) {
-        Map<String, Integer> bindings = new LinkedHashMap<>();
-
-        // The injected block is one shared descriptor across both stages; pin it to binding 0 first
-        // regardless of which stage (or both) declares it, so the unified order matches the
-        // single-stage remap contract.
-        if (ShaderTranslator.collectDescriptorNames(vertSrc).contains(ShaderTranslator.UNIFORM_BLOCK_NAME)
-                || ShaderTranslator.collectDescriptorNames(fragSrc).contains(ShaderTranslator.UNIFORM_BLOCK_NAME)) {
-            bindings.put(ShaderTranslator.UNIFORM_BLOCK_NAME, 0);
-        }
-
-        for (String source : List.of(vertSrc, fragSrc)) {
-            for (String name : ShaderTranslator.collectDescriptorNames(source)) {
-                if (!bindings.containsKey(name)) {
-                    bindings.put(name, bindings.size());
-                }
-            }
-        }
-        return bindings;
-    }
-
-    /**
      * Verifies that the union of binding numbers used across both rewritten stages is exactly
      * {@code 0..count-1}, each used at least once and none out of range. This catches a descriptor
      * the remap failed to recognise (for example an unexpected layout form), which would otherwise
      * reach VulkanMod and throw {@code IndexOutOfBoundsException}.
+     *
+     * <p>Kept on the driver path alongside the shared dense-binding contract
+     * ({@link ShaderTranslator#buildUnifiedBindingMap}): the helper assigns
+     * {@code 0..N-1} (injected block first, then first-seen vertex-&gt;fragment) and this gate
+     * refuses to let VulkanMod throw when the rewritten sources disagree.</p>
      */
     private static boolean areBindingsDense(String vertSrc, String fragSrc, int count) {
         Set<Integer> seen = new HashSet<>();
@@ -333,13 +591,48 @@ public final class VulkanModProgramBridge {
     }
 
     /**
+     * Whether the declared vertex inputs are a procedural fullscreen root: no vertex inputs
+     * at all (an attribute-less fullscreen triangle/quad driven by {@code gl_VertexID}).
+     *
+     * <p>Such passes still link against the smallest candidate format (VulkanMod requires a
+     * {@code VertexFormat} per pipeline); the shader simply consumes none of the provided
+     * attributes. A {@code null} list counts as procedural for the same reason an empty one
+     * does: there is nothing to cover, so there is nothing that can fail coverage.</p>
+     *
+     * @param requiredInputs vertex {@code in} names declared by the (translated) vertex stage;
+     *        may be {@code null}
+     * @return {@code true} when the pass declares no vertex inputs
+     */
+    public static boolean isProceduralFullscreenInputs(List<String> requiredInputs) {
+        return requiredInputs == null || requiredInputs.isEmpty();
+    }
+
+    /**
      * Picks the smallest {@link DefaultVertexFormat} from {@link #VERTEX_FORMAT_CANDIDATES} whose
      * element attribute names contain every required vertex input name.
      *
+     * <p>Legacy {@code vulkairis_*} inputs resolve through {@link #LEGACY_ATTRIB_ALIASES}
+     * first, so a fixed-function vertex shader (for example {@code ftransform()} plus
+     * {@code gl_Color}) selects the vanilla format that already provides that data
+     * instead of failing the link with an uncoverable name.</p>
+     *
+     * <p>Procedural fullscreen passes (see {@link #isProceduralFullscreenInputs}) declare no
+     * inputs and therefore select the smallest candidate ({@code POSITION}): every format
+     * trivially covers the empty set, and smallest-first keeps the vertex input state
+     * minimal for passes that ignore it.</p>
+     *
      * @return the first covering format, or {@code null} if none covers all required names
      */
-    private static VertexFormat chooseVertexFormat(List<String> requiredInputs) {
-        Set<String> required = new HashSet<>(requiredInputs);
+    public static VertexFormat chooseVertexFormat(List<String> requiredInputs) {
+        if (isProceduralFullscreenInputs(requiredInputs)) {
+            return DefaultVertexFormat.POSITION;
+        }
+        Set<String> required = new HashSet<>();
+        if (requiredInputs != null) {
+            for (String name : requiredInputs) {
+                required.add(LEGACY_ATTRIB_ALIASES.getOrDefault(name, name));
+            }
+        }
         for (VertexFormat format : VERTEX_FORMAT_CANDIDATES) {
             if (new HashSet<>(format.getElementAttributeNames()).containsAll(required)) {
                 return format;
@@ -353,13 +646,25 @@ public final class VulkanModProgramBridge {
      *
      * <p>VulkanMod's {@code GraphicsPipeline.getAttributeDescriptions} assigns
      * {@code VkVertexInputAttributeDescription.location = i} for the element at list index
-     * {@code i}, so these indices are exactly the shader input locations the SPIR-V must declare.</p>
+     * {@code i}, so these indices are exactly the shader input locations the SPIR-V must declare.
+     * Legacy {@code vulkairis_*} names from {@link #LEGACY_ATTRIB_ALIASES} are additionally
+     * mapped to their vanilla counterpart's index, so injected locations agree with the
+     * pipeline's vertex input state.</p>
      */
-    private static Map<String, Integer> buildVertexInputLocations(VertexFormat format) {
+    public static Map<String, Integer> buildVertexInputLocations(VertexFormat format) {
         Map<String, Integer> locations = new LinkedHashMap<>();
+        if (format == null) {
+            return locations;
+        }
         List<String> names = format.getElementAttributeNames();
         for (int i = 0; i < names.size(); i++) {
             locations.putIfAbsent(names.get(i), i);
+        }
+        for (Map.Entry<String, String> alias : LEGACY_ATTRIB_ALIASES.entrySet()) {
+            Integer vanilla = locations.get(alias.getValue());
+            if (vanilla != null) {
+                locations.putIfAbsent(alias.getKey(), vanilla);
+            }
         }
         return locations;
     }
@@ -368,18 +673,50 @@ public final class VulkanModProgramBridge {
      * Builds the single varying-location map shared by both stages: every vertex {@code out} name in
      * declaration order, then any fragment {@code in} names not already present. Sharing the map
      * guarantees a vertex output and its matching fragment input receive the same location.
+     *
+     * <p>Split-aware (plan §4 remainder): each declaration expands to scalar leaves via
+     * {@link LegacyGlsl#splitVarying} / {@link LegacyGlsl#splitStructVarying} and the leaf
+     * run is numbered densely via {@link LegacyGlsl#assignDenseLocations} (the rank==location
+     * discipline: a matrix run never overlaps the next varying, and structs use member
+     * counts instead of the single-slot fallback). The map carries <em>both</em> the base
+     * name (first leaf's location, for unsplit declarations) and every leaf name, so
+     * union-split sources (leaf declarations) and legacy per-stage sources (base
+     * declarations) inject from the same dense assignment.</p>
      */
     private static Map<String, Integer> buildVaryingLocations(String vertSrc, String fragSrc) {
-        Map<String, Integer> varyings = new LinkedHashMap<>();
-        int nextLocation = 0;
-        for (Map.Entry<String, Integer> entry : ShaderTranslator.collectInterfaceSlots(vertSrc, "out").entrySet()) {
-            varyings.put(entry.getKey(), nextLocation);
-            nextLocation += entry.getValue();
+        List<LegacyGlsl.VaryingDecl> vertDecls = LegacyGlsl.collectVaryingDecls(vertSrc, "out");
+        List<LegacyGlsl.VaryingDecl> fragDecls = LegacyGlsl.collectVaryingDecls(fragSrc, "in");
+        List<LegacyGlsl.VaryingDecl> ordered = new ArrayList<>();
+        Set<String> seenBases = new HashSet<>();
+        for (LegacyGlsl.VaryingDecl decl : vertDecls) {
+            if (decl != null && seenBases.add(decl.name())) {
+                ordered.add(decl);
+            }
         }
-        for (Map.Entry<String, Integer> entry : ShaderTranslator.collectInterfaceSlots(fragSrc, "in").entrySet()) {
-            if (!varyings.containsKey(entry.getKey())) {
-                varyings.put(entry.getKey(), nextLocation);
-                nextLocation += entry.getValue();
+        for (LegacyGlsl.VaryingDecl decl : fragDecls) {
+            if (decl != null && seenBases.add(decl.name())) {
+                ordered.add(decl);
+            }
+        }
+        List<LegacyGlsl.SplitLeaf> leaves = new ArrayList<>();
+        for (LegacyGlsl.VaryingDecl decl : ordered) {
+            leaves.addAll(LegacyGlsl.expandVaryingLeaves(
+                    decl.type(), decl.name(), decl.arrayLength(), decl.structMembers()));
+        }
+        Map<String, Integer> leafLocations = LegacyGlsl.assignDenseLocations(leaves);
+        Map<String, Integer> varyings = new LinkedHashMap<>();
+        for (LegacyGlsl.VaryingDecl decl : ordered) {
+            List<LegacyGlsl.SplitLeaf> declLeaves = LegacyGlsl.expandVaryingLeaves(
+                    decl.type(), decl.name(), decl.arrayLength(), decl.structMembers());
+            if (declLeaves.isEmpty() || !leafLocations.containsKey(declLeaves.get(0).name())) {
+                continue;
+            }
+            varyings.putIfAbsent(decl.name(), leafLocations.get(declLeaves.get(0).name()));
+            for (LegacyGlsl.SplitLeaf leaf : declLeaves) {
+                Integer location = leafLocations.get(leaf.name());
+                if (location != null) {
+                    varyings.putIfAbsent(leaf.name(), location);
+                }
             }
         }
         return varyings;
@@ -432,14 +769,13 @@ public final class VulkanModProgramBridge {
 
             // Not a sampler: treat as a reflected interface block (the injected block or a
             // pack-declared one). Merge stage flags/size across the stages that declare it.
+            // The union path strips every binding (reflection assigns later), so a descriptor
+            // may have no pre-remap binding at all: correlate by reflected name first and by
+            // raw binding second (robust to a named block instance, whose reflected variable
+            // name is the instance, not the block type).
             Integer rawBinding = ShaderTranslator.UNIFORM_BLOCK_NAME.equals(name)
                     ? ShaderTranslator.UNIFORM_BLOCK_BINDING
                     : rawBindings.get(name);
-            if (rawBinding == null) {
-                LOGGER.warn("[Vulkairis/ProgramBridge] Descriptor '{}' (binding {}) has no raw binding",
-                        name, binding);
-                return null;
-            }
 
             int stage = 0;
             int size = 0;
@@ -497,9 +833,13 @@ public final class VulkanModProgramBridge {
      * Whether a reflected block corresponds to the descriptor named {@code name}. Matches by reflected
      * variable name when possible, but falls back to the pre-remap raw binding so a named block
      * instance (whose reflected name is the instance, not the GLSL block type) still resolves.
+     * A {@code null} raw binding (union-translated sources carry no bindings) matches by name only.
      */
-    private static boolean matchesBlock(ShaderReflection.UniformBlock block, String name, int rawBinding) {
-        return block.name().equals(name) || block.binding() == rawBinding;
+    private static boolean matchesBlock(ShaderReflection.UniformBlock block, String name, Integer rawBinding) {
+        if (block.name().equals(name)) {
+            return true;
+        }
+        return rawBinding != null && block.binding() == rawBinding;
     }
 
     private static String samplerGlslType(String source, String name) {
@@ -551,6 +891,100 @@ public final class VulkanModProgramBridge {
     public static GraphicsPipeline getLinkedPipeline(int virtualProgramId) {
         return LINKED.get(virtualProgramId);
     }
+
+    /**
+     * Obtains a GraphicsPipeline for a specific terrain render type.
+     * Currently only supports gbuffers_terrain.
+     */
+    public static GraphicsPipeline getTerrainPipeline(String programName) {
+        int id = terrainLinkedId(programName);
+        return id > 0 ? getLinkedPipeline(id) : null;
+    }
+
+    /**
+     * Pack program name for a VulkanMod terrain render type, mirroring
+     * {@link com.vulkairis.vulkan.pipeline.TerrainPipelineDoor} naming with the
+     * cutout/translucent -> terrain fallback handled by {@link #getTerrainPipelineForType}.
+     */
+    public static String programNameForTerrainType(net.vulkanmod.render.vertex.TerrainRenderType type) {
+        if (type == null) {
+            return "gbuffers_terrain";
+        }
+        return switch (type) {
+            case SOLID, CUTOUT_MIPPED, TRIPWIRE -> "gbuffers_terrain";
+            case CUTOUT -> "gbuffers_terrain_cutout";
+            case TRANSLUCENT -> "gbuffers_translucent";
+        };
+    }
+
+    /**
+     * Resolves the linked pack pipeline for a VulkanMod terrain render type, applying the
+     * cutout/translucent -> gbuffers_terrain fallback chain.
+     */
+    public static GraphicsPipeline getTerrainPipelineForType(net.vulkanmod.render.vertex.TerrainRenderType type) {
+        String program = programNameForTerrainType(type);
+        int id = terrainLinkedId(program);
+        if (id <= 0 && !"gbuffers_terrain".equals(program)) {
+            id = terrainLinkedId("gbuffers_terrain");
+        }
+        return id > 0 ? getLinkedPipeline(id) : null;
+    }
+
+    /**
+     * Uploads the per-frame uniform payload (OfGlobals std140 block) into every ManualUBO
+     * of the linked pipeline so VulkanMod's bind path copies fresh values before draw.
+     * Never throws.
+     */
+    public static void uploadUniforms(GraphicsPipeline pipeline) {
+        if (pipeline == null) {
+            return;
+        }
+        try {
+            UniformBridge bridge = UniformBridge.getInstance();
+            java.util.List<UBO> ubos = pipeline.getBuffers();
+            if (ubos == null) {
+                return;
+            }
+            for (UBO ubo : ubos) {
+                if (!(ubo instanceof ManualUBO manual)) {
+                    continue;
+                }
+                int size = Math.max(ubo.getSize(), 16);
+                java.nio.ByteBuffer buf = MANUAL_UBO_BUFFERS.computeIfAbsent(ubo, k -> {
+                    java.nio.ByteBuffer b = java.nio.ByteBuffer.allocateDirect(size)
+                            .order(java.nio.ByteOrder.LITTLE_ENDIAN);
+                    return b;
+                });
+                if (buf.capacity() < size) {
+                    buf = java.nio.ByteBuffer.allocateDirect(size)
+                            .order(java.nio.ByteOrder.LITTLE_ENDIAN);
+                    MANUAL_UBO_BUFFERS.put(ubo, buf);
+                }
+                buf.clear();
+                // Zero-fill first so unused fields stay deterministic.
+                for (int i = 0; i < size; i++) {
+                    buf.put((byte) 0);
+                }
+                buf.clear();
+                // Fill the std140 OfGlobals payload into the front of the buffer.
+                try {
+                    bridge.writeOfGlobals(buf);
+                } catch (Throwable ignored) {
+                }
+                buf.flip();
+                long addr = org.lwjgl.system.MemoryUtil.memAddress0(buf);
+                manual.setSrc(addr, buf.remaining());
+                manual.setUpdate(true);
+            }
+        } catch (Throwable t) {
+            LOGGER.debug("[Vulkairis/ProgramBridge] Uniform upload notice: {}",
+                    t.getMessage() != null ? t.getMessage() : t.toString());
+        }
+    }
+
+    private static final java.util.concurrent.ConcurrentHashMap<UBO, java.nio.ByteBuffer> MANUAL_UBO_BUFFERS =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
 
     // ------------------------------------------------------------------
     // Phase D terrain door (narrow additions; existing link() behavior unchanged).
@@ -609,6 +1043,215 @@ public final class VulkanModProgramBridge {
                 com.vulkairis.vulkan.pipeline.TerrainPipelineDoor.forPassName(irisPassName);
         String program = com.vulkairis.vulkan.pipeline.TerrainPipelineDoor.programNameFor(pass);
         return com.vulkairis.vulkan.pipeline.TerrainPipelineDoor.decideCompile(pass, terrainLinkedId(program));
+    }
+
+    /** Shader stages consuming terrain descriptors: vertex + fragment. */
+    public static final long TERRAIN_STAGE_FLAGS = 0x1L | 0x10L;
+
+    /**
+     * Merged current-generation reflection for a terrain pack program, or {@code null}
+     * when unavailable. Merges the vertex + fragment uniform blocks, samplers and
+     * uniforms of the registered program (terrain registration first, then registry
+     * lookup by pack name), deduplicated by descriptor name. Device-free: registry reads
+     * only, never touches the Vulkan device.
+     *
+     * @param programName pack program name (e.g. {@code "gbuffers_terrain"})
+     * @return merged reflection, or {@code null} when the program or either stage is unknown
+     */
+    public static ShaderReflection terrainReflectionFor(String programName) {
+        try {
+            if (programName == null || programName.isBlank()) {
+                return null;
+            }
+            com.vulkairis.translation.VulkairisProgram program = null;
+            Integer id = TERRAIN_PROGRAM_IDS.get(programName);
+            if (id != null) {
+                program = VulkanShaderRegistry.getProgram(id);
+            }
+            if (program == null) {
+                program = VulkanShaderRegistry.findProgramByName(programName);
+            }
+            if (program == null) {
+                return null;
+            }
+            VulkairisShader vert = program.getVertexShader();
+            VulkairisShader frag = program.getFragmentShader();
+            if (vert == null || frag == null
+                    || vert.getReflection() == null || frag.getReflection() == null) {
+                return null;
+            }
+            ShaderReflection merged = new ShaderReflection();
+            java.util.Set<String> seenBlocks = new java.util.HashSet<>();
+            boolean complete = true;
+            for (VulkairisShader shader : java.util.List.of(vert, frag)) {
+                ShaderReflection reflection = shader.getReflection();
+                complete &= reflection.isComplete();
+                for (ShaderReflection.UniformBlock block : reflection.getUniformBlocks()) {
+                    if (block != null && seenBlocks.add(block.name())) {
+                        merged.addUniformBlock(block.name(), block.set(), block.binding(),
+                                block.stage(), block.size(), block.members());
+                    }
+                }
+            }
+            java.util.Set<String> seenSamplers = new java.util.HashSet<>();
+            for (VulkairisShader shader : java.util.List.of(vert, frag)) {
+                ShaderReflection reflection = shader.getReflection();
+                for (ShaderReflection.SamplerBinding sampler
+                        : reflection.getSamplers().values()) {
+                    if (sampler != null && seenSamplers.add(sampler.name())) {
+                        merged.addSampler(sampler.name(), sampler.binding(),
+                                sampler.textureUnit(), sampler.descriptorCount());
+                    }
+                }
+                for (Map.Entry<String, ShaderReflection.UniformInfo> uniform
+                        : reflection.getUniforms().entrySet()) {
+                    ShaderReflection.UniformInfo info = uniform.getValue();
+                    if (info != null && !merged.hasUniform(info.name())) {
+                        merged.addUniform(info.name(), info.type(), info.offset(), info.size());
+                    }
+                }
+            }
+            if (!complete) {
+                merged.markIncomplete();
+            }
+            return merged;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /**
+     * Provided descriptor bindings for the linked terrain pipeline, correlated by
+     * descriptor name into the required plan's numbering domain.
+     *
+     * <p>The linked pipeline carries dense post-remap binding numbers while pack
+     * reflections carry pre-remap numbers, so a raw numeric comparison would refuse
+     * every pack path on renumbering alone. Instead each required plan entry is matched
+     * to the linked descriptor with the same name: matches are emitted in the required
+     * numbering (renumbering never fails the gate), type drift is reported with the
+     * pipeline's actual type, and pack-required names absent from the pipeline are
+     * omitted so validation reports them missing. Array counts are mirrored from the
+     * required plan because VulkanMod's descriptor getters expose no array count;
+     * presence and type are strictly checked.</p>
+     *
+     * @param linkedVirtualProgramId linked virtual id with a live pipeline
+     * @param reflection merged pack reflection the required plan is built from
+     * @param stageFlags stage bits consuming the resources
+     * @return correlated provided specs, or {@code null} when no live pipeline or no
+     *         reflection is available (the lenient gate then skips, it never refuses)
+     */
+    public static List<DescriptorContractValidator.BindingSpec> terrainProvidedFor(
+            int linkedVirtualProgramId, ShaderReflection reflection, long stageFlags) {
+        try {
+            if (reflection == null || linkedVirtualProgramId <= 0) {
+                return null;
+            }
+            GraphicsPipeline pipeline = LINKED.get(linkedVirtualProgramId);
+            if (pipeline == null) {
+                return null;
+            }
+            List<DescriptorSetLayoutBuilder.DescriptorBinding> plan =
+                    DescriptorSetLayoutBuilder.forGraphics(reflection, stageFlags);
+            if (plan.isEmpty()) {
+                return List.of();
+            }
+            Map<String, Integer> linkedTypes = new java.util.HashMap<>();
+            Map<String, Long> linkedStages = new java.util.HashMap<>();
+            try {
+                List<UBO> buffers = pipeline.getBuffers();
+                if (buffers != null) {
+                    for (UBO ub : buffers) {
+                        if (ub != null && ub.name != null) {
+                            linkedTypes.putIfAbsent(ub.name, ub.getType());
+                            linkedStages.putIfAbsent(ub.name, (long) ub.getStages());
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+            try {
+                List<ImageDescriptor> images = pipeline.getImageDescriptors();
+                if (images != null) {
+                    for (ImageDescriptor image : images) {
+                        if (image != null && image.name != null) {
+                            linkedTypes.putIfAbsent(image.name, image.getType());
+                            linkedStages.putIfAbsent(image.name, (long) image.getStages());
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+            List<DescriptorContractValidator.BindingSpec> provided = new ArrayList<>();
+            for (DescriptorSetLayoutBuilder.DescriptorBinding required : plan) {
+                Integer linkedType = linkedTypes.get(required.name());
+                if (linkedType == null) {
+                    continue;
+                }
+                long stages = linkedStages.getOrDefault(required.name(), required.stageFlags());
+                provided.add(new DescriptorContractValidator.BindingSpec(
+                        required.binding(), linkedType,
+                        required.descriptorCount(), stages));
+            }
+            return List.copyOf(provided);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /**
+     * @return the extended terrain vertex stride in bytes (68)
+     * @see TerrainVertexContract#EXTENDED_STRIDE_BYTES
+     */
+    public static int terrainVertexStride() {
+        return TerrainVertexContract.EXTENDED_STRIDE_BYTES;
+    }
+
+    /**
+     * @return the Sodium 0.8 compact terrain base stride in bytes (20, preserved verbatim)
+     * @see TerrainVertexContract#BASE_STRIDE_BYTES
+     */
+    public static int terrainVertexBaseStride() {
+        return TerrainVertexContract.BASE_STRIDE_BYTES;
+    }
+
+    /**
+     * @return extended attribute name to byte offset, in append order after the base
+     * @see TerrainVertexContract#offsets()
+     */
+    public static Map<String, Integer> terrainVertexOffsets() {
+        return TerrainVertexContract.offsets();
+    }
+
+    /**
+     * Maps each extended attribute name to its shader input location: base inputs occupy
+     * locations {@code 0..baseLocationCount-1}, extensions follow in append order.
+     *
+     * @param baseLocationCount locations consumed by the base layout
+     * @return attribute name to input location, in append order
+     * @see TerrainVertexContract#inputLocations(int)
+     */
+    public static Map<String, Integer> terrainVertexInputLocations(int baseLocationCount) {
+        return TerrainVertexContract.inputLocations(baseLocationCount);
+    }
+
+    /**
+     * Whether every required vertex input is served by the vanilla block fetch.
+     *
+     * @param requiredInputs vertex input names a pack shader declares
+     * @return {@code true} when no extended attribute fetch is needed
+     * @see TerrainVertexContract#isCoveredByBlock(java.util.Collection)
+     */
+    public static boolean isTerrainVertexCoveredByBlock(List<String> requiredInputs) {
+        return TerrainVertexContract.isCoveredByBlock(requiredInputs);
+    }
+
+    /**
+     * @return single-line evidence for why {@code DefaultVertexFormat.BLOCK} suffices on
+     *         the Sodium 0.8 compact path and where the extended stride applies
+     * @see TerrainVertexContract#describeBlockMapping()
+     */
+    public static String terrainVertexEvidence() {
+        return TerrainVertexContract.describeBlockMapping();
     }
 
     /** Clears terrain program registrations. Test/shutdown helper; leaves LINKED untouched. */

@@ -198,6 +198,22 @@ public final class ProgramExecutionPlan {
             VulkanModRenderStage stage = mapStage(program);
             PassGates.Gate gate = mapGate(program);
 
+            // DH degrade pass: without the DH mod the distant programs can never compile,
+            // so they resolve UNSUPPORTED with the labeled reason and schedule no pass.
+            // Non-DH programs below are unaffected.
+            if (group == ProgramGroup.Dh
+                    && !com.vulkairis.compatibility.DistantHorizonsSupport.isAvailable()) {
+                String skipReason =
+                        com.vulkairis.compatibility.DistantHorizonsSupport.skipReason(name);
+                resolutions.put(name, new ProgramResolution(
+                        name, name, group, stage,
+                        ProgramResolution.ResolutionStatus.UNSUPPORTED,
+                        skipReason));
+                unsupportedFamilies.add("Distant Horizons program '" + name
+                        + "' skipped (DH mod absent)");
+                continue;
+            }
+
             // Check if program is explicitly disabled in options
             if (isProgramDisabled(name, options)) {
                 resolutions.put(name, new ProgramResolution(

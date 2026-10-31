@@ -1,5 +1,7 @@
 package com.vulkairis.vulkan.pipeline;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -58,6 +60,15 @@ public final class TerrainVertexContract {
     public static final int EXTENDED_STRIDE_BYTES = BASE_STRIDE_BYTES
             + BLOCK_ID.sizeBytes() + MID_TEX_COORD.sizeBytes() + MID_BLOCK.sizeBytes()
             + TANGENT_FRAME.sizeBytes() + TINT_AND_AO.sizeBytes();
+
+    /**
+     * Element attribute names of {@code DefaultVertexFormat#BLOCK} in element order
+     * ({@code Position, Color, UV0, UV2, Normal}), verified against the 1.21.1 Blaze3D
+     * class. The block vertex fetch carries exactly the 20-byte Sodium base; none of the
+     * five extended attributes above is part of this fetch.
+     */
+    public static final List<String> BLOCK_ATTRIBUTE_NAMES =
+            List.of("Position", "Color", "UV0", "UV2", "Normal");
 
     private static final AtomicBoolean SETTLED = new AtomicBoolean(false);
     private static volatile String settledBy = "";
@@ -154,5 +165,57 @@ public final class TerrainVertexContract {
         return "terrain vertex base=" + BASE_STRIDE_BYTES + "B extended=" + EXTENDED_STRIDE_BYTES
                 + "B attributes=" + EXTENDED_ATTRIBUTES.stream()
                 .map(TerrainAttribute::name).toList();
+    }
+
+    /**
+     * @param name attribute name (one of the five extended names)
+     * @return byte offset from the vertex start, matching {@link #offsetOf(String)}
+     */
+    public static Map<String, Integer> offsets() {
+        java.util.LinkedHashMap<String, Integer> offsets = new java.util.LinkedHashMap<>();
+        for (TerrainAttribute attr : EXTENDED_ATTRIBUTES) {
+            offsets.put(attr.name(), offsetOf(attr.name()));
+        }
+        return Collections.unmodifiableMap(offsets);
+    }
+
+    /**
+     * Whether every required vertex input is served by the vanilla block fetch, without
+     * any extended attribute.
+     *
+     * <p>Callers resolve legacy {@code vulkairis_*} names through
+     * {@code VulkanModProgramBridge.LEGACY_ATTRIB_ALIASES} first (the bridge's
+     * {@code chooseVertexFormat} does); this check covers vanilla names only.</p>
+     *
+     * @param requiredInputs vertex input names a pack shader declares (may be {@code null})
+     * @return {@code true} when every name is a {@link #BLOCK_ATTRIBUTE_NAMES} entry
+     *         (empty claims are vacuously covered)
+     */
+    public static boolean isCoveredByBlock(Collection<String> requiredInputs) {
+        if (requiredInputs == null || requiredInputs.isEmpty()) {
+            return true;
+        }
+        return BLOCK_ATTRIBUTE_NAMES.containsAll(requiredInputs);
+    }
+
+    /**
+     * Evidence for why {@code DefaultVertexFormat.BLOCK} suffices on the Sodium 0.8 compact
+     * path, and where the 68-byte extended stride applies instead.
+     *
+     * <p>The base 20 bytes are preserved verbatim and fetched through the block format's
+     * {@code Position/Color/UV0/UV2/Normal} elements, so a pack shader that declares only
+     * base inputs links without any extension. The five appended attributes (offsets
+     * {@link #offsets()}, total {@value #EXTENDED_STRIDE_BYTES} bytes) are only read when
+     * a pack's transformed shaders declare the corresponding extended inputs; inputs
+     * beyond the block fetch fail the link with an exact reason instead of drawing with a
+     * short vertex. The layout is settled once (see {@link #settle(String)}).</p>
+     *
+     * @return single-line evidence for diagnostics and fallback reasons
+     */
+    public static String describeBlockMapping() {
+        return "terrain vertex base=" + BASE_STRIDE_BYTES + "B via DefaultVertexFormat.BLOCK "
+                + BLOCK_ATTRIBUTE_NAMES + "; extended=" + EXTENDED_STRIDE_BYTES + "B offsets="
+                + offsets() + " read only when the pack declares extended inputs;"
+                + " uncovered inputs fail link with reason; settled by '" + settledBy() + "'";
     }
 }

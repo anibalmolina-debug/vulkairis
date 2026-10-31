@@ -4,6 +4,7 @@ import com.vulkairis.config.ConfigManager;
 import com.vulkairis.iris.IrisBridge;
 import com.vulkairis.iris.ShaderPackProgramCatalog;
 import com.vulkairis.resource.RenderTargetRegistry;
+import com.vulkairis.rendering.TemporalHistoryInvalidator;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.vulkan.VkCommandBuffer;
 import org.slf4j.Logger;
@@ -36,6 +37,8 @@ public final class VulkairisFrameCoordinator {
             new FrameTraceValidator.FrameTrace(java.util.List.of());
     private static volatile boolean enabled = true;
     private static volatile boolean active = false;
+    /** Phase 11: temporal history invalidation owner for the active pipeline. */
+    private static final TemporalHistoryInvalidator TEMPORAL_HISTORY = new TemporalHistoryInvalidator();
 
     private VulkairisFrameCoordinator() {
     }
@@ -118,6 +121,8 @@ public final class VulkairisFrameCoordinator {
         if (pinned != current) {
             pinnedGeneration = current;
             executionRecord.clear();
+            TEMPORAL_HISTORY.invalidate(TemporalHistoryInvalidator.Event.PACK_SWITCH);
+            TEMPORAL_HISTORY.invalidate(TemporalHistoryInvalidator.Event.SHADER_RESET);
             return java.util.Optional.of("pipeline generation changed " + pinned + " -> "
                     + current + "; plan rebuilt, frame dropped");
         }
@@ -180,6 +185,11 @@ public final class VulkairisFrameCoordinator {
      * Phase E: the chain plan backing the active pipeline, or {@code null} when no planned
      * pipeline is installed.
      */
+    /** @return the temporal history invalidator for this coordinator */
+    public static TemporalHistoryInvalidator temporalHistory() {
+        return TEMPORAL_HISTORY;
+    }
+
     public static PackChainPlan getChainPlan() {
         PackRenderPipeline pipeline = activePipeline;
         return pipeline != null ? pipeline.getChainPlan() : null;
@@ -230,8 +240,16 @@ public final class VulkairisFrameCoordinator {
         try {
             java.util.List<String> recorded = new java.util.ArrayList<>();
             java.util.List<String> skipped = new java.util.ArrayList<>();
+
+            // ponytail: executing composite chain directly through the active pipeline
+            // Transport uniforms to VulkanMod UBOs before executing the graph
+            if (activePipeline != null) {
+                com.vulkairis.bridge.VulkanModProgramBridge.uploadUniforms(activePipeline.getLinkedPipeline());
+            }
             RenderGraphExecutor.ExecutionReport report =
-                    activePipeline.executeTraced(recorded, skipped);
+                    activePipeline.executeTraced(recorded, skipped,
+                            activePipeline.getFramebuffers(), activePipeline.getRenderPasses());
+
             java.util.List<String> expected = new java.util.ArrayList<>();
             if (activePipeline.getGraph() != null) {
                 for (com.vulkairis.rendergraph.PassNode pass

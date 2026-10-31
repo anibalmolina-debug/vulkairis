@@ -306,6 +306,7 @@ public class VulkairisTestRunner {
             graphTest.testComputePassWithStorageImage();
             graphTest.testUsageKindMismatchIsRejected();
             graphTest.testFrameGraphDumpMentionsPassesAndResources();
+            graphTest.testPingPongReuseWithSkippedIndexCompilesInOrder();
             System.out.println(">>> PASS: RenderGraphTest");
             passed++;
         } catch (Throwable t) {
@@ -1011,7 +1012,7 @@ public class VulkairisTestRunner {
 
         // 48. Phase B: legacy-GLSL mappings + program-together translation goldens.
         try {
-            System.out.println("\n[48/54] Running LegacyGlslTest + ProgramTranslatorTest...");
+            System.out.println("\n[48/54] Running LegacyGlslTest + ProgramTranslatorTest + BridgeUnionBlockTest + FullscreenDepthRootsTest...");
             LegacyGlslTest legacyGlslTest = new LegacyGlslTest();
             legacyGlslTest.testTexture2DFamilyMapsToCoreCallees();
             legacyGlslTest.testShadowLookupsAreWrappedNotRenamed();
@@ -1036,6 +1037,15 @@ public class VulkairisTestRunner {
             legacyGlslTest.testStructVaryingSplitsPerMember();
             legacyGlslTest.testDenseLocationsAccumulateAcrossMixedLeaves();
             legacyGlslTest.testUnionVaryingHelpers();
+            legacyGlslTest.testShadow2DProjLodIsWrapped();
+            legacyGlslTest.testPrecisionStatementsAreStripped();
+            legacyGlslTest.testPrecisionDirectivesAreNeverTouched();
+            legacyGlslTest.testNonConstantConstIsDemoted();
+            legacyGlslTest.testConstantConstChainIsKept();
+            legacyGlslTest.testConstParamsAndDirectivesAreNeverDemoted();
+            legacyGlslTest.testTranslateLegacyBuiltinsStripsAndDemotesTogether();
+            legacyGlslTest.testParseStructMembers();
+            legacyGlslTest.testSplitLeafAndBaseLocationsStayDense();
             ProgramTranslatorTest programTranslatorTest = new ProgramTranslatorTest();
             programTranslatorTest.testTerrainPairTranslatesAndCompiles();
             programTranslatorTest.testEntityPairTranslatesAndCompiles();
@@ -1044,7 +1054,29 @@ public class VulkairisTestRunner {
             programTranslatorTest.testOverlappingLocationsDoNotCollideAfterTranslation();
             programTranslatorTest.testGenerationChangeInvalidatesProgramCache();
             programTranslatorTest.testStripHelpersAndNullSafety();
-            System.out.println(">>> PASS: LegacyGlslTest + ProgramTranslatorTest");
+            programTranslatorTest.testShadowProjLodPrecisionAndConstDemotionPairCompiles();
+            programTranslatorTest.testMatArrayStructVaryingPairSplitsEndToEnd();
+            programTranslatorTest.testOneSidedVaryingSurvivesLink();
+            programTranslatorTest.testBoolVaryingConvertsToIntEndToEnd();
+            BridgeUnionBlockTest bridgeUnionBlockTest = new BridgeUnionBlockTest();
+            bridgeUnionBlockTest.setUp();
+            bridgeUnionBlockTest.testDriverPathSharesIdenticalUnionBlock();
+            bridgeUnionBlockTest.setUp();
+            bridgeUnionBlockTest.testSharedBindingHelperContract();
+            LegacyAttribLinkPathTest linkPathTest = new LegacyAttribLinkPathTest();
+            linkPathTest.clearCaches();
+            linkPathTest.testLegacyAttribsSelectARealVertexFormat();
+            linkPathTest.clearCaches();
+            linkPathTest.testLegacyLinkPathInjectsAndCompiles();
+            linkPathTest.testLegacyAliasMapCoversAllFixedFunctionAttribs();
+            FullscreenDepthRootsTest fullscreenDepthTest = new FullscreenDepthRootsTest();
+            fullscreenDepthTest.testForwardZDepthBuiltinsPassThrough();
+            fullscreenDepthTest.testForwardZClearAndCompareAgreement();
+            fullscreenDepthTest.testFullscreenCompositePairTranslatesAndLinks();
+            fullscreenDepthTest.testProceduralFullscreenInputsSelectSmallestFormat();
+            fullscreenDepthTest.testEntityAndSkyRootsSelectCoveringFormats();
+            fullscreenDepthTest.testInverseMatricesStayCompilerReported();
+            System.out.println(">>> PASS: LegacyGlslTest + ProgramTranslatorTest + BridgeUnionBlockTest");
             passed++;
         } catch (Throwable t) {
             System.err.println(">>> FAIL: LegacyGlslTest + ProgramTranslatorTest: " + t.getMessage());
@@ -1105,6 +1137,7 @@ public class VulkairisTestRunner {
             phaseETest.testPlanReplayDeterministic();
             phaseETest.testSubstituteFinalLabeling();
             phaseETest.testFallbackReasonPropagationToStatus();
+            phaseETest.testComplementaryShapedPostChainBuildsPipeline();
             System.out.println(">>> PASS: PhaseEChainFallbackTest");
             passed++;
         } catch (Throwable t) {
@@ -1120,11 +1153,17 @@ public class VulkairisTestRunner {
             PhaseDTerrainDoorTest phaseDTest = new PhaseDTerrainDoorTest();
             phaseDTest.testVertexContractLayout();
             phaseDTest.testVertexContractSettlesOnce();
+            phaseDTest.testVertexContractBlockEvidence();
             phaseDTest.testDoorPassMapping();
+            phaseDTest.testDoorHandedPassResolution();
             phaseDTest.testDoorCompileNeedsLinkedPipeline();
             phaseDTest.testDoorDescriptorSwapValidation();
+            phaseDTest.testDoorRenderLenientGate();
             phaseDTest.testFallbackReasonNamesEverything();
             phaseDTest.testBridgeTerrainRegistrationIsHonestHeadless();
+            phaseDTest.testBridgeTerrainVertexHelpers();
+            phaseDTest.testBridgeTerrainRenderHelpers();
+            phaseDTest.testPackPassMirror();
             phaseDTest.testDescriptorSwapDecisions();
             phaseDTest.testPackTargetsCreateAndValidate();
             phaseDTest.testPackTargetsResizeAndMip();
@@ -1136,6 +1175,9 @@ public class VulkairisTestRunner {
             phaseDTest.testSnapshotOnceThenPerPassWrite();
             phaseDTest.testPassWriteReportsShortAndMissing();
             phaseDTest.testUniformValueKindsPublish();
+            phaseDTest.testTerrainGateClosedWithoutLinkNamesMissingCondition();
+            phaseDTest.testTerrainGateOpensOnLinkPlusValidDescriptors();
+            phaseDTest.testTerrainGateLiveWiringStaysHonestHeadless();
             System.out.println(">>> PASS: PhaseDTerrainDoorTest");
             passed++;
         } catch (Throwable t) {
@@ -1160,6 +1202,8 @@ public class VulkairisTestRunner {
             readinessTest.testExplicitFailureTransitionsToRejected();
             readinessTest.setUp();
             readinessTest.testResetReturnsToNoPack();
+            readinessTest.setUp();
+            readinessTest.testTerrainBlockNamesExactMissingCondition();
             System.out.println(">>> PASS: ReadinessStateMachineTest");
             passed++;
         } catch (Throwable t) {
@@ -1239,7 +1283,7 @@ public class VulkairisTestRunner {
 
         // 57. Phase 5: typed target, sampler and uniform plans
         try {
-            System.out.println("\n[57/60] Running TypedPlansAndDescriptorsTest...");
+            System.out.println("\n[57/61] Running TypedPlansAndDescriptorsTest...");
             TypedPlansAndDescriptorsTest plansTest = new TypedPlansAndDescriptorsTest();
             plansTest.setUp();
             plansTest.testSamplerPlanTotalBindingAndRejection();
@@ -1261,15 +1305,21 @@ public class VulkairisTestRunner {
 
         // 58. Phase D: Terrain door (mesh contract, compile/render decisions, targets, shadow, uniforms)
         try {
-            System.out.println("\n[58/60] Running PhaseDTerrainDoorTest...");
+            System.out.println("\n[58/61] Running PhaseDTerrainDoorTest...");
             PhaseDTerrainDoorTest doorTest = new PhaseDTerrainDoorTest();
             doorTest.testVertexContractLayout();
             doorTest.testVertexContractSettlesOnce();
+            doorTest.testVertexContractBlockEvidence();
             doorTest.testDoorPassMapping();
+            doorTest.testDoorHandedPassResolution();
             doorTest.testDoorCompileNeedsLinkedPipeline();
             doorTest.testDoorDescriptorSwapValidation();
+            doorTest.testDoorRenderLenientGate();
             doorTest.testFallbackReasonNamesEverything();
             doorTest.testBridgeTerrainRegistrationIsHonestHeadless();
+            doorTest.testBridgeTerrainVertexHelpers();
+            doorTest.testBridgeTerrainRenderHelpers();
+            doorTest.testPackPassMirror();
             doorTest.testDescriptorSwapDecisions();
             doorTest.testPackTargetsCreateAndValidate();
             doorTest.testPackTargetsResizeAndMip();
@@ -1281,6 +1331,9 @@ public class VulkairisTestRunner {
             doorTest.testSnapshotOnceThenPerPassWrite();
             doorTest.testPassWriteReportsShortAndMissing();
             doorTest.testUniformValueKindsPublish();
+            doorTest.testTerrainGateClosedWithoutLinkNamesMissingCondition();
+            doorTest.testTerrainGateOpensOnLinkPlusValidDescriptors();
+            doorTest.testTerrainGateLiveWiringStaysHonestHeadless();
             System.out.println(">>> PASS: PhaseDTerrainDoorTest");
             passed++;
         } catch (Throwable t) {
@@ -1291,11 +1344,12 @@ public class VulkairisTestRunner {
 
         // 59. Phase E: Frame orchestration and fallback honesty
         try {
-            System.out.println("\n[59/60] Running PhaseEChainFallbackTest...");
+            System.out.println("\n[59/61] Running PhaseEChainFallbackTest...");
             PhaseEChainFallbackTest chainTest = new PhaseEChainFallbackTest();
             chainTest.testPlanReplayDeterministic();
             chainTest.testSubstituteFinalLabeling();
             chainTest.testFallbackReasonPropagationToStatus();
+            chainTest.testComplementaryShapedPostChainBuildsPipeline();
             System.out.println(">>> PASS: PhaseEChainFallbackTest");
             passed++;
         } catch (Throwable t) {
@@ -1306,7 +1360,7 @@ public class VulkairisTestRunner {
 
         // 60. Phase F: GUI close-out
         try {
-            System.out.println("\n[60/60] Running PhaseFGuiCloseoutTest...");
+            System.out.println("\n[60/61] Running PhaseFGuiCloseoutTest...");
             PhaseFGuiCloseoutTest guiTest = new PhaseFGuiCloseoutTest();
             guiTest.testToggleColorAndLabelChangeTogether();
             guiTest.testEveryToggleRowHasTooltipAndRoundTrips();
@@ -1322,6 +1376,179 @@ public class VulkairisTestRunner {
             passed++;
         } catch (Throwable t) {
             System.err.println(">>> FAIL: PhaseFGuiCloseoutTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        // 61. DH degrade pass: distant-horizons programs skip cleanly without the DH mod
+        try {
+            System.out.println("\n[61/61] Running DistantHorizonsDegradeTest...");
+            DistantHorizonsDegradeTest dhTest = new DistantHorizonsDegradeTest();
+            dhTest.setUp();
+            dhTest.testDistantProgramDetection();
+            dhTest.tearDown();
+            dhTest.setUp();
+            dhTest.testSourceRequiresDistantHorizons();
+            dhTest.tearDown();
+            dhTest.setUp();
+            dhTest.testAvailabilityOverride();
+            dhTest.tearDown();
+            dhTest.setUp();
+            dhTest.testAnalyzerSkipsDistantWithoutCompiling();
+            dhTest.tearDown();
+            dhTest.setUp();
+            dhTest.testCatalogDistantQueries();
+            dhTest.tearDown();
+            dhTest.setUp();
+            dhTest.testCapabilityGatePartialForDistant();
+            dhTest.tearDown();
+            dhTest.setUp();
+            dhTest.testExecutionPlanSkipsDistant();
+            dhTest.tearDown();
+            dhTest.setUp();
+            dhTest.testTranslationServiceCleanRejectsDistantProgram();
+            dhTest.tearDown();
+            dhTest.setUp();
+            dhTest.testTranslationServiceUnaffectedForPlainProgram();
+            dhTest.tearDown();
+            System.out.println(">>> PASS: DistantHorizonsDegradeTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: DistantHorizonsDegradeTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        // Temporal history invalidator (Phase 11)
+        try {
+            System.out.println("\n[Phase11] Running TemporalHistoryInvalidatorTest...");
+            TemporalHistoryInvalidatorTest thTest = new TemporalHistoryInvalidatorTest();
+            thTest.invalidatesAndClears();
+            System.out.println(">>> PASS: TemporalHistoryInvalidatorTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: TemporalHistoryInvalidatorTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        // MRT capability (Phase 7)
+        try {
+            System.out.println("\n[Phase7] Running MrtCapabilityTest...");
+            MrtCapabilityTest mrtTest = new MrtCapabilityTest();
+            mrtTest.nativeMrtSatisfiesWithinLimit();
+            mrtTest.fallbackSatisfiesAny();
+            System.out.println(">>> PASS: MrtCapabilityTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: MrtCapabilityTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        // Render family registry (Phase 9)
+        try {
+            System.out.println("\n[Phase9] Running RenderFamilyTest...");
+            RenderFamilyTest rfTest = new RenderFamilyTest();
+            rfTest.registryHasFamilies();
+            rfTest.baseRenderedFamiliesHaveFallbackReason();
+            System.out.println(">>> PASS: RenderFamilyTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: RenderFamilyTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        // First frame guard (Phase 6)
+        try {
+            System.out.println("\n[Phase6] Running FirstFrameGuardTest...");
+            FirstFrameGuardTest ffTest = new FirstFrameGuardTest();
+            ffTest.guardsFirstFrame();
+            System.out.println(">>> PASS: FirstFrameGuardTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: FirstFrameGuardTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        // G-buffer layout (Phase 7)
+        try {
+            System.out.println("\n[Phase7] Running GBufferLayoutTest...");
+            GBufferLayoutTest gbTest = new GBufferLayoutTest();
+            gbTest.hasAttachments();
+            System.out.println(">>> PASS: GBufferLayoutTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: GBufferLayoutTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        // Color space (Phase 10)
+        try {
+            System.out.println("\n[Phase10] Running ColorSpaceTest...");
+            ColorSpaceTest csTest = new ColorSpaceTest();
+            csTest.roundTrip();
+            System.out.println(">>> PASS: ColorSpaceTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: ColorSpaceTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        // Uniform catalogue (Phase 10)
+        try {
+            System.out.println("\n[Phase10] Running UniformCatalogueTest...");
+            UniformCatalogueTest ucTest = new UniformCatalogueTest();
+            ucTest.catalogueIsNonEmptyAndUnique();
+            ucTest.supportedLookupWorks();
+            System.out.println(">>> PASS: UniformCatalogueTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: UniformCatalogueTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        // Vitrail-guided visual pipeline (terrain hook + uniform transport + pack state)
+        try {
+            System.out.println("\n[Vitrail] Running VulkanModTerrainHookTest...");
+            VulkanModTerrainHookTest vthTest = new VulkanModTerrainHookTest();
+            vthTest.testProgramNameForSolid();
+            vthTest.testBindDoesNotThrow();
+            vthTest.testUnbindResetsBound();
+            System.out.println(">>> PASS: VulkanModTerrainHookTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: VulkanModTerrainHookTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        try {
+            System.out.println("\n[Vitrail] Running UniformTransportTest...");
+            UniformTransportTest utTest = new UniformTransportTest();
+            utTest.testUploadUniformsNullSafe();
+            utTest.testWriteOfGlobalsStd140();
+            System.out.println(">>> PASS: UniformTransportTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: UniformTransportTest: " + t.getMessage());
+            t.printStackTrace();
+            failed++;
+        }
+
+        try {
+            System.out.println("\n[Vitrail] Running PackExecutionStateTest...");
+            PackExecutionStateTest pesTest = new PackExecutionStateTest();
+            pesTest.testResetToNoPack();
+            System.out.println(">>> PASS: PackExecutionStateTest");
+            passed++;
+        } catch (Throwable t) {
+            System.err.println(">>> FAIL: PackExecutionStateTest: " + t.getMessage());
             t.printStackTrace();
             failed++;
         }

@@ -1,6 +1,5 @@
-package com.vulkairis.client;
+package com.vulkairis;
 
-import com.vulkairis.client.mixin.ext.VulkairisMixinExtension;
 import net.fabricmc.loader.api.entrypoint.PreLaunchEntrypoint;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -39,14 +38,17 @@ public class VulkairisPreLaunch implements PreLaunchEntrypoint {
             "MixinSodiumGameOptions",
             "EnumOptionBuilderImplAccessor",
             "IntegerOptionBuilderImplAccessor",
+            // Iris hand cancellation mixin: cancels vanilla hand/item rendering when shaders are on
+            // because HandRenderer.renderSolid() is not called from stripped MixinGameRenderer.
+            // Stripping MixinItemInHandRenderer lets vanilla/VulkanMod render first-person hands & held items.
+            "MixinItemInHandRenderer",
+            // Armor and entity layer mixins that fail or conflict in 1.21.1:
+            // MixinHumanoidArmorLayer throws InvalidMixinException / NPE parsing @Inject on changeId,
+            // which crashes resource reload and prevents loading to the main menu.
             "MixinHumanoidArmorLayer",
             "MixinHorseArmorLayer",
             "MixinCapeLayer",
             "MixinElytraLayer",
-            "MixinItemRenderer",
-            "MixinEntityRenderer",
-            "MixinEntityRenderDispatcher",
-            "MixinBlockEntityRenderDispatcher",
             "MixinEnderDragonRenderer"
     );
 
@@ -95,9 +97,17 @@ public class VulkairisPreLaunch implements PreLaunchEntrypoint {
                     getExtMethod.setAccessible(true);
                     Object extRegistry = getExtMethod.invoke(transformer);
                     if (extRegistry != null) {
+                        // VulkairisMixinExtension lives in the client source set, so
+                        // instantiate via reflection to avoid cross-source-set linkage
+                        // issues during preLaunch.
+                        Class<?> extClass = Class.forName(
+                                "com.vulkairis.client.mixin.ext.VulkairisMixinExtension",
+                                true,
+                                Thread.currentThread().getContextClassLoader());
+                        Object extension = extClass.getDeclaredConstructor().newInstance();
                         Method addMethod = extRegistry.getClass().getMethod("add", IExtension.class);
                         addMethod.setAccessible(true);
-                        addMethod.invoke(extRegistry, new VulkairisMixinExtension());
+                        addMethod.invoke(extRegistry, extension);
                         LOGGER.info("[Vulkairis] Successfully registered VulkairisMixinExtension with Sponge Mixin!");
                     }
                 }

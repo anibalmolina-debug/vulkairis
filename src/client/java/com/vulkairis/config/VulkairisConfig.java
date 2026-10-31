@@ -66,6 +66,12 @@ public class VulkairisConfig {
     /** Phase 1: verbose pipeline trace logging (intercept/translate/compile/link phases). */
     private boolean traceLogging = false;
     /**
+     * Load spreading: when enabled, heavy translation/compile workloads are distributed across
+     * the available compile workers instead of a single worker. Defaults OFF until validated
+     * (safe default per the load-spreading plan).
+     */
+    private boolean loadSpreadingEnabled = false;
+    /**
      * Controlled render mode. Defaults to {@link DebugRenderMode#OFF} so a fresh config never
      * draws the test quad over the menu or before a world is loaded. Use {@code /vulkairis mode
      * triangle}, {@code /vulkairis mode shader_test} or one of the diagnostic visualizers
@@ -170,6 +176,14 @@ public class VulkairisConfig {
 
     public void setTraceLogging(boolean traceLogging) {
         this.traceLogging = traceLogging;
+    }
+
+    public boolean isLoadSpreadingEnabled() {
+        return loadSpreadingEnabled;
+    }
+
+    public void setLoadSpreadingEnabled(boolean loadSpreadingEnabled) {
+        this.loadSpreadingEnabled = loadSpreadingEnabled;
     }
 
     public DebugRenderMode getDebugRenderMode() {

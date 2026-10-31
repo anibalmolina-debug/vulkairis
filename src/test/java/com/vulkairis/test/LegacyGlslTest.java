@@ -403,4 +403,212 @@ public class LegacyGlslTest {
         Assertions.assertEquals(Set.of(),
                 LegacyGlsl.oneSidedVaryings(Map.of("a", 1), Map.of("a", 1)));
     }
+
+    // ------------------------------------------------------------------
+    // Phase B gaps B-4/B-5: shadow2DProjLod wrap, precision strip, const demotion.
+    // ------------------------------------------------------------------
+
+    @Test
+    public void testShadow2DProjLodIsWrapped() {
+        String source = """
+                #version 450 core
+                uniform sampler2DShadow shadowtex0;
+                void main() {
+                    float a = shadow2DProjLod(shadowtex0, vec4(0.5, 0.5, 0.25, 1.0), 2.0);
+                }
+                """;
+
+        String rewritten = LegacyGlsl.rewriteTextureLookups(source);
+
+        Assertions.assertTrue(
+                rewritten.contains("textureProjLod(shadowtex0, vec4(0.5, 0.5, 0.25, 1.0), 2.0)"),
+                rewritten);
+        Assertions.assertFalse(rewritten.contains("shadow2D"), rewritten);
+        Assertions.assertTrue(rewritten.contains("sampler2DShadow"), rewritten);
+
+        String twice = LegacyGlsl.rewriteTextureLookups(rewritten);
+        Assertions.assertEquals(rewritten, twice, "The wrap must be idempotent");
+    }
+
+    @Test
+    public void testPrecisionStatementsAreStripped() {
+        String source = """
+                #version 450 core
+                precision mediump float;
+                precision lowp int;
+                // precision mediump float; in a comment must survive
+                void main() {
+                    vec4 a = vec4(1.0);
+                }
+                """;
+
+        String stripped = LegacyGlsl.stripPrecisionStatements(source);
+
+        Assertions.assertFalse(stripped.contains("\nprecision mediump float;"),
+                "The pack precision default must go: " + stripped);
+        Assertions.assertFalse(stripped.contains("\nprecision lowp int;"), stripped);
+        Assertions.assertTrue(stripped.contains("// precision mediump float; in a comment must survive"),
+                "Comments must never be rewritten: " + stripped);
+        Assertions.assertTrue(stripped.contains("vec4 a = vec4(1.0);"), stripped);
+
+        Assertions.assertEquals(stripped, LegacyGlsl.stripPrecisionStatements(stripped),
+                "Stripping twice must be a no-op");
+        Assertions.assertNull(LegacyGlsl.stripPrecisionStatements(null));
+    }
+
+    @Test
+    public void testPrecisionDirectivesAreNeverTouched() {
+        String source = "#version 450 core\n"
+                + "#define SAMPLE precision mediump float\n"
+                + "void main() {}\n";
+
+        Assertions.assertTrue(LegacyGlsl.stripPrecisionStatements(source).contains(
+                "#define SAMPLE precision mediump float"));
+    }
+
+    @Test
+    public void testNonConstantConstIsDemoted() {
+        String source = """
+                #version 450 core
+                uniform float frameTime;
+                const float PI = 3.14159;
+                const vec3 AXIS = vec3(0.0, 1.0, 0.0);
+                void main() {
+                    const float exposure = frameTime * 2.0;
+                    const vec3 tint = vec3(PI) + AXIS;
+                    gl_Position = vec4(exposure);
+                }
+                """;
+
+        String demoted = LegacyGlsl.demoteNonConstantConsts(source);
+
+        Assertions.assertTrue(demoted.contains("const float PI = 3.14159;"),
+                "A literal const must stay const: " + demoted);
+        Assertions.assertTrue(demoted.contains("const vec3 AXIS = vec3(0.0, 1.0, 0.0);"),
+                "A constructor-of-literals const must stay const: " + demoted);
+        Assertions.assertTrue(demoted.contains("float exposure = frameTime * 2.0;"),
+                "A runtime const must lose its const: " + demoted);
+        Assertions.assertFalse(demoted.contains("const float exposure"), demoted);
+
+        Assertions.assertEquals(demoted, LegacyGlsl.demoteNonConstantConsts(demoted),
+                "Demoting twice must be a no-op");
+        Assertions.assertNull(LegacyGlsl.demoteNonConstantConsts(null));
+    }
+
+    @Test
+    public void testConstantConstChainIsKept() {
+        String source = """
+                #version 450 core
+                const int N = 4;
+                const int M = N + 1;
+                void main() {}
+                """;
+
+        String demoted = LegacyGlsl.demoteNonConstantConsts(source);
+
+        Assertions.assertTrue(demoted.contains("const int N = 4;"), demoted);
+        Assertions.assertTrue(demoted.contains("const int M = N + 1;"),
+                "A const built from an earlier constant const must stay const: " + demoted);
+    }
+
+    @Test
+    public void testConstParamsAndDirectivesAreNeverDemoted() {
+        String source = "#version 450 core\n"
+                + "#define VALUE const float x = y\n"
+                + "// const float z = w;\n"
+                + "void apply(const int level) {}\n"
+                + "void main() {}\n";
+
+        String demoted = LegacyGlsl.demoteNonConstantConsts(source);
+
+        Assertions.assertTrue(demoted.contains("#define VALUE const float x = y"), demoted);
+        Assertions.assertTrue(demoted.contains("// const float z = w;"), demoted);
+        Assertions.assertTrue(demoted.contains("void apply(const int level) {}"), demoted);
+    }
+
+    @Test
+    public void testTranslateLegacyBuiltinsStripsAndDemotesTogether() {
+        String source = """
+                precision mediump float;
+                uniform sampler2DShadow shadowtex0;
+                const float PI = 3.14;
+                void main() {
+                    const float s = shadow2DProjLod(shadowtex0, vec4(0.1), 1.0);
+                    gl_FragColor = vec4(s * PI);
+                }
+                """;
+
+        LegacyGlsl.LegacyResult result = LegacyGlsl.translateLegacyBuiltins(source, false);
+
+        Assertions.assertFalse(result.source().contains("precision mediump float;"), result.source());
+        Assertions.assertTrue(result.source().contains("textureProjLod(shadowtex0, vec4(0.1), 1.0)"),
+                result.source());
+        Assertions.assertTrue(result.source().contains("const float PI = 3.14;"), result.source());
+        Assertions.assertTrue(result.source().contains("float s = textureProjLod("), result.source());
+        Assertions.assertEquals(Set.of(0), result.fragDataIndices());
+    }
+
+    // ------------------------------------------------------------------
+    // Plan §4 remainder: union-path split application helpers.
+    // ------------------------------------------------------------------
+
+    @Test
+    public void testParseStructMembers() {
+        String source = """
+                #version 450 core
+                struct Surface {
+                    vec3 albedo;
+                    float roughness;
+                };
+                out Surface surface;
+                void main() {}
+                """;
+
+        List<LegacyGlsl.StructMember> members =
+                LegacyGlsl.parseStructMembers(source, "Surface");
+
+        Assertions.assertEquals(2, members.size());
+        Assertions.assertEquals("vec3", members.get(0).type());
+        Assertions.assertEquals("albedo", members.get(0).name());
+        Assertions.assertEquals("float", members.get(1).type());
+        Assertions.assertEquals("roughness", members.get(1).name());
+        Assertions.assertTrue(LegacyGlsl.parseStructMembers(source, "Missing").isEmpty());
+        Assertions.assertTrue(LegacyGlsl.parseStructMembers(null, "Surface").isEmpty());
+    }
+
+    @Test
+    public void testSplitLeafAndBaseLocationsStayDense() {
+        String vertex = """
+                #version 450 core
+                struct Surface {
+                    vec3 albedo;
+                    float roughness;
+                };
+                out mat4 shadowMatrix;
+                out vec4 texCoords[2];
+                out Surface surface;
+                out vec2 texCoord;
+                void main() {}
+                """;
+
+        List<LegacyGlsl.VaryingDecl> decls = LegacyGlsl.collectVaryingDecls(vertex, "out");
+
+        Assertions.assertEquals(List.of("shadowMatrix", "texCoords", "surface", "texCoord"),
+                decls.stream().map(LegacyGlsl.VaryingDecl::name).toList());
+
+        Map<String, Integer> leaves = LegacyGlsl.assignSplitLeafLocations(decls);
+        // mat4 takes 4, vec4[2] takes 2, struct takes 2, vec2 takes 1: dense 0..8.
+        Assertions.assertEquals(9, leaves.size());
+        Assertions.assertEquals(0, leaves.get("shadowMatrix_c0"));
+        Assertions.assertEquals(3, leaves.get("shadowMatrix_c3"));
+        Assertions.assertEquals(4, leaves.get("texCoords_0"));
+        Assertions.assertEquals(5, leaves.get("texCoords_1"));
+        Assertions.assertEquals(6, leaves.get("surface_m0"));
+        Assertions.assertEquals(7, leaves.get("surface_m1"));
+        Assertions.assertEquals(8, leaves.get("texCoord"));
+
+        Map<String, Integer> bases = LegacyGlsl.assignSplitBaseLocations(decls);
+        Assertions.assertEquals(Map.of("shadowMatrix", 0, "texCoords", 4,
+                "surface", 6, "texCoord", 8), bases);
+    }
 }

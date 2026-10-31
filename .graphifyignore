@@ -1,0 +1,19 @@
+# Build output
+build/
+.gradle/
+
+# Minecraft dev-run artifacts and logs
+run/
+logs/
+
+# Third-party mod jars / binaries
+LIBS/
+
+# Generated graph output
+graphify-out/
+
+# Crash / JVM dumps and scratch dumps
+*.zip
+crash-reports/
+hs_err_pid*.log
+parse_dump.txt
